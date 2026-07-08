@@ -1,0 +1,23 @@
+{
+  "name": "sk-central",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SK Central - One Platform. Infinite Possibilities.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @sk-central/web",
+    "dev:web": "npm run dev --workspace @sk-central/web",
+    "dev:api": "npm run dev --workspace @sk-central/api",
+    "free:api-port": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$p=(Get-NetTCPConnection -LocalPort 4002 -State Listen -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique; if ($p) { $p | ForEach-Object { Stop-Process -Id $_ -Force }; Write-Output 'Freed API port 4002' } else { Write-Output 'API port 4002 is already free' }\"",
+    "build": "npm run build --workspace @sk-central/web && npm run build --workspace @sk-central/api",
+    "lint": "npm run lint --workspace @sk-central/web && npm run lint --workspace @sk-central/api",
+    "typecheck": "npm run typecheck --workspace @sk-central/web && npm run typecheck --workspace @sk-central/api",
+    "start": "npm run start --workspace @sk-central/api"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.0.0"
+  }
+}
