@@ -28,8 +28,8 @@ export default function DocumentationPage() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[330px_1fr]">
-      <aside className="glass sticky top-17 h-[calc(100vh-7rem)] rounded-[1.75rem] p-3">
+    <div className="grid gap-3 lg:grid-cols-[280px_1fr]">
+      <aside className="glass sticky top-17 h-[calc(100vh-7rem)] rounded-[1.5rem] p-3">
         <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/80 px-3 py-2">
           <Search size={16} className="text-slate-400" />
           <input
@@ -54,19 +54,19 @@ export default function DocumentationPage() {
         </div>
       </aside>
 
-      <section className="glass flex h-[calc(100vh-7rem)] flex-col rounded-[1.75rem] p-4">
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-900/10 pb-4">
+      <section className="glass flex h-[calc(100vh-7rem)] flex-col rounded-[1.5rem] p-3">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-900/10 pb-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Documentation</p>
-            <h1 className="mt-1 text-3xl font-black text-slate-950">{activeApp.name}</h1>
-            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">{activeApp.longDescription}</p>
+            <h1 className="mt-1 text-2xl font-black text-slate-950">{activeApp.name}</h1>
+            <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600">{activeApp.longDescription}</p>
           </div>
           <a href={activeApp.liveLink} target="_blank" rel="noreferrer" className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white">
             Launch
           </a>
         </header>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {activeApp.docs.map((doc, index) => (
             <button
               key={doc.id}
@@ -80,7 +80,7 @@ export default function DocumentationPage() {
           ))}
         </div>
 
-        <article className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-[1.75rem] border border-slate-900/10 bg-white/82 p-5 shadow-sm">
+        <article className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-[1.4rem] border border-slate-900/10 bg-white/82 p-4 shadow-sm">
           {activeDoc.type === 'md' ? (
             <MarkdownPreview content={activeDoc.content ?? ''} />
           ) : activeDoc.type === 'pdf' && activeDoc.url ? (

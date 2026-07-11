@@ -213,8 +213,8 @@ export default function AnalyticsPage() {
   const cards = [
     { label: 'Unique Users', value: data.users.length, icon: UsersRound, modal: 'users' as const },
     { label: 'Login Events', value: loginRows.reduce((sum, row) => sum + row.count, 0), icon: LogIn, modal: 'logins' as const },
-    { label: 'SK Quiz Visits', value: visitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'visits' as const },
-    { label: 'Active Time', value: formatDuration(activeTimeRows.reduce((sum, row) => sum + row.seconds, 0)), icon: Clock, modal: 'time' as const }
+    { label: 'Active Time', value: formatDuration(activeTimeRows.reduce((sum, row) => sum + row.seconds, 0)), icon: Clock, modal: 'time' as const },
+    { label: 'SK Quiz Visits', value: visitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'visits' as const }
   ];
   const skQuizSummary = mergeMetricSources(skQuiz.data, [
     'summary',
@@ -311,12 +311,14 @@ export default function AnalyticsPage() {
 
       {activeProject === 'sk-central' ? (
         <>
-          <section className="grid gap-3 md:grid-cols-4">
+          <section className="grid gap-2 md:grid-cols-4">
             {cards.map(({ label, value, icon: Icon, modal }) => (
-              <button key={label} type="button" onClick={() => setActiveModal(modal)} className="glass rounded-[1.75rem] p-4 text-left transition hover:-translate-y-1 hover:shadow-xl">
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Icon size={18} /></span>
-                <strong className="mt-3 block text-2xl text-slate-950">{value}</strong>
-                <span className="text-xs font-black text-slate-500">{label}</span>
+              <button key={label} type="button" onClick={() => setActiveModal(modal)} className="glass flex min-h-20 items-center gap-3 rounded-[1.4rem] p-3 text-left transition hover:-translate-y-0.5 hover:shadow-xl">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Icon size={18} /></span>
+                <span className="min-w-0">
+                  <strong className="block truncate text-xl text-slate-950">{value}</strong>
+                  <span className="block truncate text-xs font-black text-slate-500">{label}</span>
+                </span>
               </button>
             ))}
           </section>
@@ -385,8 +387,8 @@ function AnalyticsModal({ title, columns, rows, footer, onClose }: { title: stri
   const [query, setQuery] = useState('');
   const filteredRows = rows.filter((row) => row.join(' ').toLowerCase().includes(query.toLowerCase()));
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm">
-      <div className="glass max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-[2rem]">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+      <div className="glass max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-[2rem]" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/10 p-4">
           <div>
             <h2 className="text-xl font-black text-slate-950">{title}</h2>
