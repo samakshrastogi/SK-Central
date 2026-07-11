@@ -121,12 +121,12 @@ export default function AnalyticsPage() {
   }, [data.activities]);
 
   const activeTimeRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; platform: string; seconds: number }>();
+    const grouped = new Map<string, { user: string; email: string; platform: string; date: string; seconds: number }>();
     data.activities.filter((item) => item.type === 'active_time').forEach((item) => {
       const user = item.userId?.name ?? 'Unknown';
       const email = item.userId?.email ?? '';
-      const key = `${user}-${item.platform}`;
-      const row = grouped.get(key) ?? { user, email, platform: item.platform, seconds: 0 };
+      const key = `${user}-${item.platform}-${item.dateKey}`;
+      const row = grouped.get(key) ?? { user, email, platform: item.platform, date: item.dateKey, seconds: 0 };
       row.seconds += item.durationSeconds ?? 0;
       grouped.set(key, row);
     });
@@ -145,6 +145,70 @@ export default function AnalyticsPage() {
     });
     return [...grouped.values()];
   }, [data.activities]);
+
+  const loginDateColumns = useMemo(() => {
+    return [...new Set(loginRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
+  }, [loginRows]);
+
+  const loginPivotRows = useMemo(() => {
+    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
+    loginRows.forEach((row) => {
+      const key = `${row.email}-${row.user}`;
+      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
+      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
+      grouped.set(key, current);
+    });
+
+    return [...grouped.values()].map((row, index) => [
+      index + 1,
+      row.user,
+      row.email,
+      ...loginDateColumns.map((date) => row.counts[date] ?? 0)
+    ]);
+  }, [loginDateColumns, loginRows]);
+
+  const visitDateColumns = useMemo(() => {
+    return [...new Set(visitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
+  }, [visitRows]);
+
+  const visitPivotRows = useMemo(() => {
+    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
+    visitRows.forEach((row) => {
+      const key = `${row.email}-${row.user}`;
+      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
+      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
+      grouped.set(key, current);
+    });
+
+    return [...grouped.values()].map((row, index) => [
+      index + 1,
+      row.user,
+      row.email,
+      ...visitDateColumns.map((date) => row.counts[date] ?? 0)
+    ]);
+  }, [visitDateColumns, visitRows]);
+
+  const activeTimeDateColumns = useMemo(() => {
+    return [...new Set(activeTimeRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
+  }, [activeTimeRows]);
+
+  const activeTimePivotRows = useMemo(() => {
+    const grouped = new Map<string, { user: string; email: string; platform: string; seconds: Record<string, number> }>();
+    activeTimeRows.forEach((row) => {
+      const key = `${row.email}-${row.user}-${row.platform}`;
+      const current = grouped.get(key) ?? { user: row.user, email: row.email, platform: row.platform, seconds: {} };
+      current.seconds[row.date] = (current.seconds[row.date] ?? 0) + row.seconds;
+      grouped.set(key, current);
+    });
+
+    return [...grouped.values()].map((row, index) => [
+      index + 1,
+      row.user,
+      row.email,
+      row.platform,
+      ...activeTimeDateColumns.map((date) => formatDuration(row.seconds[date] ?? 0))
+    ]);
+  }, [activeTimeDateColumns, activeTimeRows]);
 
   const cards = [
     { label: 'Unique Users', value: data.users.length, icon: UsersRound, modal: 'users' as const },
@@ -212,20 +276,20 @@ export default function AnalyticsPage() {
     },
     logins: {
       title: 'Login Count',
-      columns: ['S.no.', 'Users', 'Email ID', 'Date', 'Logins'],
-      rows: loginRows.map((row, index) => [index + 1, row.user, row.email, row.date, row.count]),
+      columns: ['S.no.', 'Users', 'Email ID', ...loginDateColumns],
+      rows: loginPivotRows,
       footer: `Total logins: ${loginRows.reduce((sum, row) => sum + row.count, 0)}`
     },
     time: {
       title: 'Average Active Time',
-      columns: ['S.no.', 'Users', 'Email ID', 'Platform', 'Time spent'],
-      rows: activeTimeRows.map((row, index) => [index + 1, row.user, row.email, row.platform, formatDuration(row.seconds)]),
+      columns: ['S.no.', 'Users', 'Email ID', 'Platform', ...activeTimeDateColumns],
+      rows: activeTimePivotRows,
       footer: `Total active time: ${formatDuration(activeTimeRows.reduce((sum, row) => sum + row.seconds, 0))}`
     },
     visits: {
       title: 'SK Quiz Visits',
-      columns: ['S.no.', 'Users', 'Email ID', 'Date', 'Visits'],
-      rows: visitRows.map((row, index) => [index + 1, row.user, row.email, row.date, row.count]),
+      columns: ['S.no.', 'Users', 'Email ID', ...visitDateColumns],
+      rows: visitPivotRows,
       footer: `Total visits: ${visitRows.reduce((sum, row) => sum + row.count, 0)}`
     }
   };

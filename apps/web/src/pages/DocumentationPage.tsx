@@ -1,4 +1,4 @@
-import { BookOpen, FileArchive, FileText, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { MarkdownPreview } from '@/components/documentation/MarkdownPreview';
@@ -48,13 +48,13 @@ export default function DocumentationPage() {
               className={`w-full rounded-2xl p-3 text-left transition ${activeApp.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
             >
               <strong className="block text-sm">{app.name}</strong>
-              <span className="text-xs opacity-75">{app.docs.map((doc) => doc.type.toUpperCase()).join(', ')}</span>
+              <span className="text-xs opacity-75">{app.docs.length} documentation section{app.docs.length === 1 ? '' : 's'}</span>
             </button>
           ))}
         </div>
       </aside>
 
-      <section className="glass rounded-[1.75rem] p-4">
+      <section className="glass flex h-[calc(100vh-7rem)] flex-col rounded-[1.75rem] p-4">
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-900/10 pb-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Documentation</p>
@@ -67,33 +67,27 @@ export default function DocumentationPage() {
         </header>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {activeApp.docs.map((doc) => (
+          {activeApp.docs.map((doc, index) => (
             <button
               key={doc.id}
               type="button"
               onClick={() => setActiveDocId(doc.id)}
+              aria-label={`Open documentation section ${index + 1}`}
               className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black transition ${activeDoc.id === doc.id ? 'bg-cyan-600 text-white' : 'bg-white/75 text-slate-700 hover:bg-cyan-50'}`}
             >
-              {doc.type === 'md' ? <FileText size={15} /> : <FileArchive size={15} />}
-              {doc.name}
+              Section {index + 1}
             </button>
           ))}
         </div>
 
-        <article className="mt-4 min-h-[560px] rounded-[1.75rem] border border-slate-900/10 bg-white/82 p-5 shadow-sm">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-xl font-black text-slate-950">
-              <BookOpen size={20} className="text-cyan-700" /> {activeDoc.name}
-            </h2>
-            <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-black uppercase text-cyan-700">{activeDoc.type}</span>
-          </div>
+        <article className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-[1.75rem] border border-slate-900/10 bg-white/82 p-5 shadow-sm">
           {activeDoc.type === 'md' ? (
             <MarkdownPreview content={activeDoc.content ?? ''} />
           ) : activeDoc.type === 'pdf' && activeDoc.url ? (
             <iframe title={activeDoc.name} src={activeDoc.url} className="h-[620px] w-full rounded-2xl border border-slate-900/10 bg-white" />
           ) : (
             <div className="rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-              <strong className="block text-slate-950">DOCX uploaded: {activeDoc.name}</strong>
+              <strong className="block text-slate-950">Document preview is being prepared.</strong>
               Inline DOCX rendering needs a server-side conversion pipeline. For the cleanest reader experience, upload Markdown or PDF, or add a conversion service that turns DOCX into HTML/PDF during upload.
             </div>
           )}
