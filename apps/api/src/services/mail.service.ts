@@ -74,6 +74,30 @@ const connect = () =>
     });
   });
 
+const upgradeToTls = (socket: net.Socket) =>
+  new Promise<tls.TLSSocket>((resolve, reject) => {
+    if (!env.SMTP_HOST) return reject(new Error('SMTP host is missing'));
+    let settled = false;
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+    const resolveOnce = (tlsSocket: tls.TLSSocket) => {
+      if (settled) return;
+      settled = true;
+      resolve(tlsSocket);
+    };
+    const tlsSocket = tls.connect({ socket, servername: env.SMTP_HOST, timeout: env.SMTP_TIMEOUT_MS });
+    tlsSocket.setTimeout(env.SMTP_TIMEOUT_MS);
+    tlsSocket.once('error', rejectOnce);
+    tlsSocket.once('timeout', () => {
+      tlsSocket.destroy();
+      rejectOnce(new Error(`SMTP STARTTLS handshake timed out after ${env.SMTP_TIMEOUT_MS}ms`));
+    });
+    tlsSocket.once('secureConnect', () => resolveOnce(tlsSocket));
+  });
+
 export async function sendOtpEmail(input: { to: string; otp: string; purpose: 'verify_email' | 'reset_password' }) {
   const label = input.purpose === 'verify_email' ? 'Email verification' : 'Password reset';
   const subject = `SK Central ${label} OTP`;
@@ -112,6 +136,11 @@ export async function sendOtpEmail(input: { to: string; otp: string; purpose: 'v
   try {
     socket = await connect();
     await sendCommand(socket, 'EHLO sk-central.local', [250]);
+    if (!env.SMTP_SECURE && env.SMTP_STARTTLS) {
+      await sendCommand(socket, 'STARTTLS', [220]);
+      socket = await upgradeToTls(socket);
+      await sendCommand(socket, 'EHLO sk-central.local', [250]);
+    }
     await sendCommand(socket, 'AUTH LOGIN', [334]);
     await sendCommand(socket, Buffer.from(fromAddress).toString('base64'), [334]);
     await sendCommand(socket, Buffer.from(env.SMTP_PASS ?? '').toString('base64'), [235]);
@@ -121,8 +150,13 @@ export async function sendOtpEmail(input: { to: string; otp: string; purpose: 'v
     await sendCommand(socket, `${message.replace(/^\./gm, '..')}\r\n.`, [250]);
     await sendCommand(socket, 'QUIT', [221]);
   } catch (error) {
-    logger.error('OTP email delivery failed', error);
-    const deliveryError = new Error('Email delivery failed. Check SMTP credentials, provider access, or use another email provider.') as Error & { statusCode?: number };
+    logger.error(
+      `OTP email delivery failed via ${env.SMTP_HOST}:${env.SMTP_PORT} secure=${env.SMTP_SECURE} starttls=${env.SMTP_STARTTLS}`,
+      error
+    );
+    const deliveryError = new Error(
+      `Email delivery failed via SMTP ${env.SMTP_HOST}:${env.SMTP_PORT}. Check SMTP host, port, Render outbound access, provider SMTP access, credentials, or use a transactional email provider.`
+    ) as Error & { statusCode?: number };
     deliveryError.statusCode = 502;
     throw deliveryError;
   } finally {
