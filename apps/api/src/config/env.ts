@@ -19,6 +19,7 @@ const envSchema = z.object({
   MAIL_FROM: z.string().default('SK Central <hello@sk-hub.in>'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(465),
+  SMTP_TIMEOUT_MS: z.coerce.number().default(12_000),
   SMTP_SECURE: z
     .enum(['true', 'false'])
     .default('true')
