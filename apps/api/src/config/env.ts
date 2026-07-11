@@ -9,6 +9,7 @@ const envSchema = z.object({
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5475'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:5475,http://localhost:5474'),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/sk-central'),
+  DATABASE_NAME: z.string().default(process.env.NODE_ENV === 'production' ? 'central' : 'sk-central'),
   JWT_SECRET: z.string().default('development-only'),
   SSO_TOKEN_SECRET: z.string().default('sk-central-local-sso-secret-change-in-production'),
   SSO_COOKIE_NAME: z.string().default('sk_central_sid'),
