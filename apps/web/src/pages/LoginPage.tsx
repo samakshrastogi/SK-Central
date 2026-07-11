@@ -45,9 +45,13 @@ export default function LoginPage() {
   const showAccountPicker = mode === 'login' && hasRemembered && !selectedIdentity;
 
   useEffect(() => {
-    setRemembered(getRememberedIdentities());
-    void validateRememberedIdentities().then(setRemembered);
-    if (requestedMode === 'register') setMode('register');
+    const localIdentities = getRememberedIdentities();
+    setRemembered(localIdentities);
+    if (requestedMode === 'register' || (!requestedMode && localIdentities.length === 0)) setMode('register');
+    void validateRememberedIdentities().then((validIdentities) => {
+      setRemembered(validIdentities);
+      if (!requestedMode && validIdentities.length === 0) setMode('register');
+    });
     void loadSession();
   }, [loadSession, requestedMode]);
 
@@ -79,7 +83,7 @@ export default function LoginPage() {
     if (mode === 'register') return 'Register once, verify by email OTP, and use every SK application with one identity.';
     if (mode === 'verify') return 'Enter the OTP sent to your email to activate your SK Auth account.';
     if (mode === 'forgot' || mode === 'reset') return 'Verify the OTP for this account before setting a fresh password.';
-    return selectedIdentity ? `Unlock ${selectedIdentity.email}` : 'No saved account found. Sign in or create a new SK account.';
+    return selectedIdentity ? `Unlock ${selectedIdentity.email}` : 'Create a new SK Auth account for this browser.';
   }, [mode, selectedIdentity, showAccountPicker]);
 
   const finish = () => {
@@ -296,6 +300,16 @@ export default function LoginPage() {
               {canResetPassword && mode === 'login' ? (
                 <button type="button" onClick={() => void beginForgotPassword()} className="ml-auto mt-3 flex w-fit rounded-2xl bg-amber-100 px-4 py-2 text-sm font-black text-amber-900">
                   Forgot password? Send OTP to this email
+                </button>
+              ) : null}
+              {mode === 'register' ? (
+                <button type="button" onClick={() => switchMode('login')} className="ml-auto mt-3 flex w-fit rounded-2xl bg-white/80 px-4 py-2 text-xs font-black text-slate-600">
+                  Already registered? Sign in
+                </button>
+              ) : null}
+              {mode === 'login' && !hasRemembered && !selectedIdentity ? (
+                <button type="button" onClick={() => switchMode('register')} className="ml-auto mt-3 flex w-fit rounded-2xl bg-white/80 px-4 py-2 text-xs font-black text-slate-600">
+                  New here? Create account
                 </button>
               ) : null}
             </>
