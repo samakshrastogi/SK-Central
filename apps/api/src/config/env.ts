@@ -6,6 +6,7 @@ dotenv.config();
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4002),
+  TRUST_PROXY: z.string().default(process.env.NODE_ENV === 'production' ? '1' : 'false'),
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5475'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:5475,http://localhost:5474'),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/sk-central'),
