@@ -91,7 +91,7 @@ export default function AdminPage() {
     reset(defaultForm);
   };
 
-  const onSubmit = (values: ApplicationForm) => {
+  const onSubmit = async (values: ApplicationForm) => {
     const slug = values.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const existing = applications.find((applicationItem) => applicationItem.id === editingId);
     const application: ManagedApplication = {
@@ -115,8 +115,8 @@ export default function AdminPage() {
       analytics: existing?.analytics ?? fallbackMetrics,
       adminAnalytics: existing?.adminAnalytics
     };
-    if (existing) updateApplication(application);
-    else addApplication(application);
+    if (existing) await updateApplication(application);
+    else await addApplication(application);
     closeApplicationModal();
   };
 
@@ -214,7 +214,7 @@ export default function AdminPage() {
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-2">
                         <button type="button" onClick={() => startEdit(application)} className="rounded-xl bg-cyan-100 p-2 text-cyan-700" aria-label={`Edit ${application.name}`}><Pencil size={15} /></button>
-                        <button type="button" onClick={() => deleteApplication(application.id)} className="rounded-xl bg-rose-100 p-2 text-rose-700" aria-label={`Delete ${application.name}`}><Trash2 size={15} /></button>
+                        <button type="button" onClick={() => void deleteApplication(application.id)} className="rounded-xl bg-rose-100 p-2 text-rose-700" aria-label={`Delete ${application.name}`}><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>

@@ -24,3 +24,24 @@ export const createProject: RequestHandler = async (req, res) => {
   const input = createProjectSchema.parse(req.body);
   created(res, await service.createProject(input), 'Project created');
 };
+
+export const updateProject: RequestHandler = async (req, res) => {
+  const slug = String(req.params.slug);
+  const input = createProjectSchema.parse(req.body);
+  const project = await service.updateProject(slug, input);
+  if (!project) {
+    res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Project not found' });
+    return;
+  }
+  ok(res, project, 'Project updated');
+};
+
+export const deleteProject: RequestHandler = async (req, res) => {
+  const slug = String(req.params.slug);
+  const project = await service.deleteProject(slug);
+  if (!project) {
+    res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Project not found' });
+    return;
+  }
+  ok(res, project, 'Project deleted');
+};

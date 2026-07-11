@@ -5,7 +5,7 @@ import { searchQuerySchema } from '@/validators/search.validator.js';
 
 const service = new SearchService();
 
-export const globalSearch: RequestHandler = (req, res) => {
+export const globalSearch: RequestHandler = async (req, res) => {
   const { q } = searchQuerySchema.parse(req.query);
-  ok(res, service.search(q));
+  ok(res, await service.search(q));
 };

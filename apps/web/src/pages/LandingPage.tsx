@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, ExternalLink, Sparkles, Zap } from 'lucide-react';
+import { BookOpen, ExternalLink, Sparkles } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import gsap from 'gsap';
@@ -8,6 +8,8 @@ import { cn } from '@/utils/cn';
 export default function LandingPage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const applications = useApplicationStore((state) => state.applications);
+  const loading = useApplicationStore((state) => state.loading);
+  const error = useApplicationStore((state) => state.error);
 
   useEffect(() => {
     if (!rootRef.current) return;
@@ -22,38 +24,17 @@ export default function LandingPage() {
     <div ref={rootRef} className="space-y-4">
       <section className="relative overflow-hidden rounded-[1.6rem] border border-slate-900/10 bg-white/75 p-3 shadow-[0_18px_70px_rgba(15,23,42,0.10)] backdrop-blur-2xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(34,211,238,0.26),transparent_28%),radial-gradient(circle_at_82%_20%,rgba(251,191,36,0.28),transparent_30%),radial-gradient(circle_at_48%_95%,rgba(244,63,94,0.14),transparent_30%)]" />
-        <div className="relative grid gap-3 xl:grid-cols-[1.05fr_auto_0.95fr] xl:items-center">
+        <div className="relative">
           <div data-hero className="min-w-0">
             <span className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white">
               <Sparkles size={14} /> SK Central
             </span>
             <h1 className="mt-2 max-w-4xl text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
-              Explore every SK application from one beautiful hub.
+              One hub for SK applications.
             </h1>
-            <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-600">
-              Launch products, read documentation, and get guided help from the floating AI assistant without digging through internal dashboards.
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+              Open apps and documentation from one clean workspace.
             </p>
-          </div>
-          <div data-hero className="flex flex-row flex-wrap gap-2 xl:flex-col">
-              <a href="#applications" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white">
-                Browse Applications <ArrowRight size={17} />
-              </a>
-              <Link to="/docs" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 shadow-sm">
-                Open Documentation <BookOpen size={17} />
-              </Link>
-          </div>
-          <div data-hero className="hidden gap-2 xl:grid xl:grid-cols-3">
-            {[
-              ['Live previews', 'See the first screen before opening an app.'],
-              ['Docs beside apps', 'Every app card links directly to its documentation.'],
-              ['AI guidance', 'Ask questions scoped to applications and docs.']
-            ].map(([title, body]) => (
-              <div key={title} className="rounded-2xl border border-slate-900/10 bg-white/70 p-3 shadow-sm">
-                <Zap className="text-cyan-600" size={18} />
-                <h2 className="mt-1 text-sm font-black text-slate-950">{title}</h2>
-                <p className="mt-1 text-xs leading-5 text-slate-600">{body}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -66,6 +47,16 @@ export default function LandingPage() {
           </div>
           <p className="max-w-xl text-sm text-slate-600">Cards show status, preview, description, and direct actions for users.</p>
         </div>
+        {loading ? (
+          <div className="rounded-[1.5rem] border border-slate-900/10 bg-white/75 p-6 text-sm font-bold text-slate-500">Loading applications...</div>
+        ) : error ? (
+          <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-6 text-sm font-bold text-rose-700">{error}</div>
+        ) : !applications.length ? (
+          <div className="rounded-[1.5rem] border border-slate-900/10 bg-white/75 p-6">
+            <h3 className="text-lg font-black text-slate-950">No applications published yet.</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Admins can add production applications from the admin page.</p>
+          </div>
+        ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {applications.map((app) => (
             <article
@@ -112,6 +103,7 @@ export default function LandingPage() {
             </article>
           ))}
         </div>
+        )}
       </section>
     </div>
   );

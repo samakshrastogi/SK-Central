@@ -1,23 +1,45 @@
 import type { RequestHandler } from 'express';
+import mongoose from 'mongoose';
+import { ProjectModel } from '@/models/project.model.js';
+import { IdentityActivityModel, IdentitySessionModel, IdentityUserModel } from '@/models/identity.model.js';
 import { ok } from '@/utils/apiResponse.js';
 
-export const getAdminOverview: RequestHandler = (_req, res) => {
+export const getAdminOverview: RequestHandler = async (_req, res) => {
+  const [totalUsers, projects, activeSessions, loginEvents, activeTime] = await Promise.all([
+    IdentityUserModel.countDocuments({ disabledAt: { $exists: false } }),
+    ProjectModel.find().lean(),
+    IdentitySessionModel.countDocuments({ revokedAt: { $exists: false }, expiresAt: { $gt: new Date() } }),
+    IdentityActivityModel.countDocuments({ type: 'login' }),
+    IdentityActivityModel.aggregate<{ totalSeconds: number }>([
+      { $match: { type: 'active_time' } },
+      { $group: { _id: null, totalSeconds: { $sum: '$durationSeconds' } } }
+    ])
+  ]);
+  const liveProjects = projects.filter((project) => project.status === 'Live').length;
+
   ok(res, {
     overview: {
-      totalUsers: 42800,
-      projects: 12,
-      storage: '18.4 TB',
-      apiCalls: 8900000,
-      requests: 41200000,
-      errors: '0.03%',
-      growth: '+12.4%'
+      totalUsers,
+      projects: projects.length,
+      liveProjects,
+      activeSessions,
+      loginEvents,
+      activeTimeSeconds: activeTime[0]?.totalSeconds ?? 0
     },
     modules: {
-      quizCoach: { users: 18200, quizzes: 4800, attempts: 124000, accuracy: 87, completion: 74 },
-      skFlips: { videos: 5400, watchTimeHours: 18000, views: 2100000, storage: '9.2 TB' },
-      community: { posts: 18700, comments: 92000, likes: 411000, reports: 37 },
-      ai: { requests: 281000, models: 4, tokens: 92000000, averageResponseTimeMs: 1200 },
-      infrastructure: { mongodb: 'healthy', redis: 'prepared', node: '20.x', api: '99.98%' }
+      applications: projects.map((project) => ({
+        id: String(project._id),
+        name: project.name,
+        slug: project.slug,
+        status: project.status,
+        version: project.version,
+        category: project.category
+      })),
+      infrastructure: {
+        mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        node: process.version,
+        api: 'online'
+      }
     }
   });
 };

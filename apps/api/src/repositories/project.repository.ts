@@ -1,22 +1,19 @@
 import mongoose from 'mongoose';
-import { demoProjects } from '@/constants/demoData.js';
 import { ProjectModel } from '@/models/project.model.js';
 
 export class ProjectRepository {
   async findAll() {
     if (mongoose.connection.readyState !== 1) {
-      return demoProjects;
+      return [];
     }
-    const projects = await ProjectModel.find().lean();
-    return projects.length ? projects : demoProjects;
+    return ProjectModel.find().sort({ createdAt: -1 }).lean();
   }
 
   async findBySlug(slug: string) {
     if (mongoose.connection.readyState !== 1) {
-      return demoProjects.find((item) => item.slug === slug) ?? null;
+      return null;
     }
-    const project = await ProjectModel.findOne({ slug }).lean();
-    return project ?? demoProjects.find((item) => item.slug === slug) ?? null;
+    return ProjectModel.findOne({ slug }).lean();
   }
 
   async create(input: Record<string, unknown>) {
@@ -26,5 +23,23 @@ export class ProjectRepository {
       });
     }
     return ProjectModel.create(input);
+  }
+
+  async updateBySlug(slug: string, input: Record<string, unknown>) {
+    if (mongoose.connection.readyState !== 1) {
+      throw Object.assign(new Error('MongoDB is not connected. Project updates are unavailable.'), {
+        statusCode: 503
+      });
+    }
+    return ProjectModel.findOneAndUpdate({ slug }, input, { new: true, runValidators: true }).lean();
+  }
+
+  async deleteBySlug(slug: string) {
+    if (mongoose.connection.readyState !== 1) {
+      throw Object.assign(new Error('MongoDB is not connected. Project deletion is unavailable.'), {
+        statusCode: 503
+      });
+    }
+    return ProjectModel.findOneAndDelete({ slug }).lean();
   }
 }

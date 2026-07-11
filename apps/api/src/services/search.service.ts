@@ -1,9 +1,10 @@
-import { demoProjects } from '@/constants/demoData.js';
+import { ProjectModel } from '@/models/project.model.js';
 
 export class SearchService {
-  search(query: string) {
+  async search(query: string) {
     const normalized = query.toLowerCase();
-    const projects = demoProjects.filter((project) =>
+    const allProjects = await ProjectModel.find().lean();
+    const projects = allProjects.filter((project) =>
       [project.name, project.category, project.description, ...project.technologies].some((value) =>
         value.toLowerCase().includes(normalized)
       )
@@ -12,10 +13,10 @@ export class SearchService {
     return {
       projects,
       documentation: projects.map((project) => ({ title: `${project.name} documentation`, slug: project.slug })),
-      community: [{ title: `Discussions matching ${query}`, type: 'thread' }],
+      community: [],
       users: [],
       videos: [],
-      commands: ['Open admin panel', 'Launch demo', 'Show system health']
+      commands: ['Open admin panel', 'Show system health']
     };
   }
 }

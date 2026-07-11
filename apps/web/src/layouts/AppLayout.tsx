@@ -9,6 +9,7 @@ import { bottomNavigation } from '@/constants/navigation';
 import { api } from '@/services/api';
 import { useUiStore } from '@/store/uiStore';
 import { getInitials, useAuthStore } from '@/store/authStore';
+import { useApplicationStore } from '@/store/applicationStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { cn } from '@/utils/cn';
 
@@ -18,6 +19,7 @@ export function AppLayout() {
   const setNotificationsOpen = useUiStore((state) => state.setNotificationsOpen);
   const notificationItems = useNotificationStore((state) => state.items);
   const loadNotifications = useNotificationStore((state) => state.load);
+  const loadApplications = useApplicationStore((state) => state.loadApplications);
   const { user, initialized, loadSession } = useAuthStore();
   const location = useLocation();
   const unread = notificationItems.filter((notification) => notification.unread).length;
@@ -30,10 +32,11 @@ export function AppLayout() {
 
   useEffect(() => {
     if (!user) return;
+    void loadApplications();
     void loadNotifications();
     const interval = window.setInterval(() => void loadNotifications(), 15_000);
     return () => window.clearInterval(interval);
-  }, [loadNotifications, user]);
+  }, [loadApplications, loadNotifications, user]);
 
   useEffect(() => {
     if (!user) return;

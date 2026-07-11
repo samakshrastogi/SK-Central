@@ -14,4 +14,12 @@ export class ProjectService {
   createProject(input: Record<string, unknown>) {
     return this.repository.create(input);
   }
+
+  updateProject(slug: string, input: Record<string, unknown>) {
+    return this.repository.updateBySlug(slug, input);
+  }
+
+  deleteProject(slug: string) {
+    return this.repository.deleteBySlug(slug);
+  }
 }

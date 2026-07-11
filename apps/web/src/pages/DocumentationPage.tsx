@@ -12,7 +12,7 @@ export default function DocumentationPage() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const activeApp = applications.find((app) => app.slug === activeSlug) ?? applications[0];
-  const activeDoc = activeApp.docs.find((doc) => doc.id === activeDocId) ?? activeApp.docs[0];
+  const activeDoc = activeApp?.docs.find((doc) => doc.id === activeDocId) ?? activeApp?.docs[0];
   const filtered = useMemo(() => {
     const normalized = query.toLowerCase();
     return applications.filter((app) =>
@@ -45,7 +45,7 @@ export default function DocumentationPage() {
               key={app.id}
               type="button"
               onClick={() => selectApp(app.slug)}
-              className={`w-full rounded-2xl p-3 text-left transition ${activeApp.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
+              className={`w-full rounded-2xl p-3 text-left transition ${activeApp?.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
             >
               <strong className="block text-sm">{app.name}</strong>
               <span className="text-xs opacity-75">{app.docs.length} documentation section{app.docs.length === 1 ? '' : 's'}</span>
@@ -58,15 +58,17 @@ export default function DocumentationPage() {
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-900/10 pb-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Documentation</p>
-            <h1 className="mt-1 text-2xl font-black text-slate-950">{activeApp.name}</h1>
-            <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600">{activeApp.longDescription}</p>
+            <h1 className="mt-1 text-2xl font-black text-slate-950">{activeApp?.name ?? 'No documentation yet'}</h1>
+            <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600">
+              {activeApp?.longDescription ?? 'Documentation appears here after an admin adds an application with uploaded docs.'}
+            </p>
           </div>
-          <a href={activeApp.liveLink} target="_blank" rel="noreferrer" className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white">
+          {activeApp ? <a href={activeApp.liveLink} target="_blank" rel="noreferrer" className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white">
             Launch
-          </a>
+          </a> : null}
         </header>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        {activeApp?.docs.length ? <div className="mt-3 flex flex-wrap gap-2">
           {activeApp.docs.map((doc, index) => (
             <button
               key={doc.id}
@@ -78,10 +80,15 @@ export default function DocumentationPage() {
               Section {index + 1}
             </button>
           ))}
-        </div>
+        </div> : null}
 
         <article className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-[1.4rem] border border-slate-900/10 bg-white/82 p-4 shadow-sm">
-          {activeDoc.type === 'md' ? (
+          {!activeDoc ? (
+            <div className="rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+              <strong className="block text-slate-950">No document selected.</strong>
+              Add Markdown, PDF, or DOCX documentation from the admin page.
+            </div>
+          ) : activeDoc.type === 'md' ? (
             <MarkdownPreview content={activeDoc.content ?? ''} />
           ) : activeDoc.type === 'pdf' && activeDoc.url ? (
             <iframe title={activeDoc.name} src={activeDoc.url} className="h-[620px] w-full rounded-2xl border border-slate-900/10 bg-white" />

@@ -13,6 +13,20 @@ const projectSchema = new Schema(
     launchUrl: { type: String },
     documentationUrl: { type: String },
     githubUrl: { type: String },
+    docs: [
+      {
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        type: { type: String, enum: ['md', 'pdf', 'docx'], required: true },
+        content: { type: String },
+        url: { type: String },
+        size: { type: Number },
+        uploadedAt: { type: String, required: true }
+      }
+    ],
+    features: [{ type: String }],
+    gradient: { type: String },
+    logo: { type: String },
     ownerTeam: { type: String },
     metrics: { type: Map, of: String, default: {} },
     roadmap: [{ type: String }],

@@ -1,16 +1,18 @@
 import type { RequestHandler } from 'express';
-import { demoProjects } from '@/constants/demoData.js';
+import { ProjectModel } from '@/models/project.model.js';
+import { IdentityUserModel } from '@/models/identity.model.js';
 import { ok } from '@/utils/apiResponse.js';
 
-export const getDashboard: RequestHandler = (req, res) => {
+export const getDashboard: RequestHandler = async (req, res) => {
+  const [projects, users] = await Promise.all([ProjectModel.find().sort({ createdAt: -1 }).lean(), IdentityUserModel.countDocuments()]);
   ok(res, {
     user: req.user,
     stats: {
-      projects: 12,
-      users: 42800,
-      requests: 8900000,
-      launches: 27
+      projects: projects.length,
+      users,
+      requests: 0,
+      launches: projects.filter((project) => project.status === 'Live').length
     },
-    featuredProjects: demoProjects
+    featuredProjects: projects.filter((project) => project.isFeatured)
   });
 };
