@@ -1,14 +1,17 @@
-import { BadgeCheck, Bell, CalendarDays, Mail, MapPin, Palette, Shield, Sparkles, UserRound } from 'lucide-react';
+import { BadgeCheck, Bell, CalendarDays, Camera, LogOut, Mail, MapPin, Palette, Shield, Sparkles, UserRound } from 'lucide-react';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import gsap from 'gsap';
 import { useApplicationStore } from '@/store/applicationStore';
-
-const permissions = ['Application Admin', 'Documentation Manager', 'Analytics Viewer', 'AI Assistant Access'];
+import { getInitials, useAuthStore } from '@/store/authStore';
 
 export default function ProfilePage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const profile = useApplicationStore((state) => state.profile);
   const updateProfile = useApplicationStore((state) => state.updateProfile);
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
   const [section, setSection] = useState<'profile' | 'settings' | 'more'>('profile');
 
   useEffect(() => {
@@ -24,23 +27,55 @@ export default function ProfilePage() {
     updateProfile({ [key]: event.target.value });
   };
 
+  const signOut = async () => {
+    await logout(true);
+    void navigate('/login');
+  };
+
+  const displayName = profile.name || user?.name || 'SK User';
+  const displayEmail = user?.email || profile.email;
+  const displayBio = profile.bio || 'Manage your SK applications, documents, analytics, and connected sessions from one secure identity.';
+  const displayAvatar = profile.avatar || getInitials(displayName || displayEmail);
+  const permissions = user?.permissions?.length ? user.permissions : ['apps:read'];
+  const onAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => updateProfile({ avatarUrl: String(reader.result), avatar: '' });
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div ref={rootRef} className="grid gap-4 xl:grid-cols-[420px_1fr]">
       <section data-profile className="relative overflow-hidden rounded-[2rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-[0_30px_100px_rgba(15,23,42,0.28)]">
         <div data-orbit className="absolute -right-24 -top-24 h-56 w-56 rounded-full border border-cyan-300/30" />
         <div className="relative">
-          <span className="grid h-24 w-24 place-items-center rounded-[2rem] bg-gradient-to-br from-cyan-300 via-amber-200 to-rose-300 text-3xl font-black text-slate-950">
-            {profile.avatar}
-          </span>
+          <label className="group relative block h-28 w-28 cursor-pointer overflow-hidden rounded-[2rem] bg-gradient-to-br from-cyan-300 via-amber-200 to-rose-300 text-slate-950 shadow-2xl">
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="grid h-full w-full place-items-center text-4xl font-black">{displayAvatar}</span>
+            )}
+            <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-slate-950/75 py-2 text-xs font-black text-white opacity-0 transition group-hover:opacity-100">
+              <Camera size={14} /> Upload
+            </span>
+            <input type="file" accept="image/*" onChange={onAvatarUpload} className="hidden" />
+          </label>
           <div className="mt-6 flex items-center gap-2">
-            <h1 className="text-3xl font-black">{profile.name}</h1>
+            <h1 className="text-3xl font-black">{displayName}</h1>
             <BadgeCheck className="text-cyan-300" size={22} />
           </div>
-          <p className="mt-2 text-sm text-slate-300">{profile.role}</p>
-          <p className="mt-3 text-sm leading-6 text-slate-300">{profile.bio}</p>
+          <p className="mt-3 text-sm leading-6 text-slate-300">{displayBio}</p>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-cyan-50"
+          >
+            <LogOut size={17} /> Logout
+          </button>
           <div className="mt-6 grid gap-3">
             {[
-              [Mail, profile.email],
+              [Mail, displayEmail],
               [MapPin, profile.location],
               [CalendarDays, 'Joined 2026']
             ].map(([Icon, value]) => (
@@ -79,7 +114,7 @@ export default function ProfilePage() {
               <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><Shield size={19} /> Permissions</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {permissions.map((permission) => (
-                  <span key={permission} className="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-black text-cyan-800">{permission}</span>
+                  <span key={permission} className="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-black text-cyan-800">{permission.replace(':', ' ')}</span>
                 ))}
               </div>
             </div>
@@ -126,6 +161,10 @@ export default function ProfilePage() {
                 Profile Icon Initials
                 <input value={profile.avatar} onChange={onInput('avatar')} maxLength={3} className="rounded-2xl border-slate-200" />
               </label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700 md:col-span-2">
+                Profile Image
+                <input type="file" accept="image/*" onChange={onAvatarUpload} className="rounded-2xl border border-slate-200 bg-white p-3" />
+              </label>
             </div>
           </div>
         ) : null}
@@ -135,11 +174,11 @@ export default function ProfilePage() {
             <h2 className="text-xl font-black text-slate-950">Tell SK Central More About You</h2>
             <p className="mt-1 text-sm text-slate-600">This helps personalize application recommendations, docs, and admin workflows.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1 text-sm font-bold text-slate-700">Name<input value={profile.name} onChange={onInput('name')} className="rounded-2xl border-slate-200" /></label>
-              <label className="grid gap-1 text-sm font-bold text-slate-700">Role<input value={profile.role} onChange={onInput('role')} className="rounded-2xl border-slate-200" /></label>
-              <label className="grid gap-1 text-sm font-bold text-slate-700">Email<input value={profile.email} onChange={onInput('email')} className="rounded-2xl border-slate-200" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Name<input value={profile.name || user?.name || ''} onChange={onInput('name')} className="rounded-2xl border-slate-200" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Title<input value={profile.role} onChange={onInput('role')} className="rounded-2xl border-slate-200" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700">Email<input value={displayEmail} readOnly className="rounded-2xl border-slate-200 bg-slate-50 text-slate-500" /></label>
               <label className="grid gap-1 text-sm font-bold text-slate-700">Location<input value={profile.location} onChange={onInput('location')} className="rounded-2xl border-slate-200" /></label>
-              <label className="grid gap-1 text-sm font-bold text-slate-700 md:col-span-2">Project Bio<textarea value={profile.bio} onChange={onInput('bio')} rows={4} className="rounded-2xl border-slate-200" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700 md:col-span-2">Project Bio<textarea value={profile.bio || displayBio} onChange={onInput('bio')} rows={4} className="rounded-2xl border-slate-200" /></label>
             </div>
           </div>
         ) : null}

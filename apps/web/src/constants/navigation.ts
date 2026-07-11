@@ -10,6 +10,7 @@ import type { NavigationItem } from '@/types';
 export const bottomNavigation: NavigationItem[] = [
   { label: 'Overview', href: '/', icon: Home },
   { label: 'Documentation', href: '/docs', icon: FileText },
+  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Admin', href: '/admin', icon: Shield },
   { label: 'Profile', href: '/profile', icon: UserRound }
 ];

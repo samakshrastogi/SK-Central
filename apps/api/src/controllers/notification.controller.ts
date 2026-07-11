@@ -1,16 +1,34 @@
 import type { RequestHandler } from 'express';
 import { ok } from '@/utils/apiResponse.js';
 
-const demoNotifications = [
-  { id: 'n1', title: 'SK Quiz Coach 2.8 released', group: 'Launches', unread: true },
-  { id: 'n2', title: 'Infrastructure watch', group: 'System', unread: true },
-  { id: 'n3', title: 'Community moderation queue', group: 'Community', unread: false }
+let readAllAt: Date | null = null;
+
+const liveNotifications = () => [
+  {
+    id: 'identity-analytics',
+    title: 'Identity analytics updated',
+    description: 'New user, login, visit, and active-time events are available.',
+    group: 'System',
+    unread: !readAllAt,
+    targetUrl: '/analytics',
+    createdAt: new Date().toLocaleString()
+  },
+  {
+    id: 'applications-admin',
+    title: 'Application controls ready',
+    description: 'Manage app links, documentation, previews, and user access from Admin.',
+    group: 'Launches',
+    unread: !readAllAt,
+    targetUrl: '/admin',
+    createdAt: new Date().toLocaleString()
+  }
 ];
 
 export const listNotifications: RequestHandler = (_req, res) => {
-  ok(res, demoNotifications);
+  ok(res, liveNotifications());
 };
 
 export const markAllRead: RequestHandler = (_req, res) => {
-  ok(res, { updated: demoNotifications.length }, 'Notifications marked read');
+  readAllAt = new Date();
+  ok(res, { updated: liveNotifications().length }, 'Notifications marked read');
 };

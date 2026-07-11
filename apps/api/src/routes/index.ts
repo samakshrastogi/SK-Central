@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { adminRoutes } from '@/routes/admin.routes.js';
 import { aiRoutes } from '@/routes/ai.routes.js';
 import { analyticsRoutes } from '@/routes/analytics.routes.js';
+import { authRoutes } from '@/routes/auth.routes.js';
 import { dashboardRoutes } from '@/routes/dashboard.routes.js';
 import { healthRoutes } from '@/routes/health.routes.js';
 import { integrationRoutes } from '@/routes/integration.routes.js';
@@ -13,6 +14,7 @@ import { systemRoutes } from '@/routes/system.routes.js';
 export const apiRoutes = Router();
 
 apiRoutes.use('/health', healthRoutes);
+apiRoutes.use('/auth', authRoutes);
 apiRoutes.use('/integrations', integrationRoutes);
 apiRoutes.use('/dashboard', dashboardRoutes);
 apiRoutes.use('/projects', projectRoutes);

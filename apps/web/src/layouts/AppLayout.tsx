@@ -1,20 +1,57 @@
-import { Bell, Search, UserRound } from 'lucide-react';
+import { Bell, Search } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import gsap from 'gsap';
 import { FloatingAssistant } from '@/components/assistant/FloatingAssistant';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { NotificationDrawer } from '@/components/notifications/NotificationDrawer';
 import { bottomNavigation } from '@/constants/navigation';
-import { notifications } from '@/constants/projects';
+import { api } from '@/services/api';
 import { useUiStore } from '@/store/uiStore';
+import { getInitials, useAuthStore } from '@/store/authStore';
+import { useNotificationStore } from '@/store/notificationStore';
 import { cn } from '@/utils/cn';
 
 export function AppLayout() {
   const dockRef = useRef<HTMLElement>(null);
   const setCommandOpen = useUiStore((state) => state.setCommandOpen);
   const setNotificationsOpen = useUiStore((state) => state.setNotificationsOpen);
-  const unread = notifications.filter((notification) => notification.unread).length;
+  const notificationItems = useNotificationStore((state) => state.items);
+  const loadNotifications = useNotificationStore((state) => state.load);
+  const { user, initialized, loadSession } = useAuthStore();
+  const location = useLocation();
+  const unread = notificationItems.filter((notification) => notification.unread).length;
+  const isAdmin = user?.role === 'admin';
+  const visibleNavigation = bottomNavigation.filter((item) => isAdmin || !['/admin', '/analytics'].includes(item.href));
+
+  useEffect(() => {
+    if (!initialized) void loadSession();
+  }, [initialized, loadSession]);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadNotifications();
+    const interval = window.setInterval(() => void loadNotifications(), 15_000);
+    return () => window.clearInterval(interval);
+  }, [loadNotifications, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      void api.post('/auth/usage', { platform: 'sk-central', type: 'active_time', durationSeconds: 60 }).catch(() => undefined);
+    }, 60_000);
+    const onPageHide = () => {
+      const durationSeconds = Math.max(1, Math.floor((Date.now() - startedAt) / 1000));
+      const payload = JSON.stringify({ platform: 'sk-central', type: 'active_time', durationSeconds });
+      navigator.sendBeacon?.(`${api.defaults.baseURL}/auth/usage`, new Blob([payload], { type: 'application/json' }));
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!dockRef.current) return;
@@ -24,6 +61,22 @@ export function AppLayout() {
       { y: 0, opacity: 1, scale: 1, duration: 0.7, ease: 'power3.out' }
     );
   }, []);
+
+  if (!initialized) {
+    return (
+      <div className="grid min-h-screen place-items-center px-4 text-center">
+        <div className="glass rounded-[2rem] p-6 shadow-2xl">
+          <div className="mx-auto h-10 w-10 animate-pulse rounded-2xl bg-slate-950" />
+          <p className="mt-4 text-sm font-black text-slate-600">Checking SK Auth session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />;
+  }
 
   return (
     <div className="min-h-screen bg-transparent text-slate-950">
@@ -59,10 +112,10 @@ export function AppLayout() {
           </button>
           <NavLink
             to="/profile"
-            className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400 via-amber-300 to-rose-400 text-slate-950 shadow-sm"
+            className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400 via-amber-300 to-rose-400 text-sm font-black text-slate-950 shadow-sm"
             aria-label="Profile"
           >
-            <UserRound size={18} />
+            {getInitials(user.name)}
           </NavLink>
         </div>
       </header>
@@ -74,7 +127,7 @@ export function AppLayout() {
         className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-[28px] border border-slate-900/10 bg-white/75 p-2 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl"
         aria-label="Primary navigation"
       >
-        {bottomNavigation.map((item) => (
+        {visibleNavigation.map((item) => (
           <NavLink
             key={item.href}
             to={item.href}

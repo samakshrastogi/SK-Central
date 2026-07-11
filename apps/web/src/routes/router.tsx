@@ -4,11 +4,14 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Skeleton } from '@/components/common/Skeleton';
 import { AppLayout } from '@/layouts/AppLayout';
+import { useAuthStore } from '@/store/authStore';
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 const DocumentationPage = lazy(() => import('@/pages/DocumentationPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const LoginPage = lazy(() => import('@/pages/LoginPage'));
 
 function PageLoader() {
   return (
@@ -24,7 +27,14 @@ function LazyPage({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
+function AdminOnly({ children }: { children: ReactNode }) {
+  const user = useAuthStore((state) => state.user);
+  if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 export const router = createBrowserRouter([
+  { path: '/login', element: <LazyPage><LoginPage /></LazyPage> },
   {
     path: '/',
     element: (
@@ -35,7 +45,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <LazyPage><LandingPage /></LazyPage> },
       { path: 'docs', element: <LazyPage><DocumentationPage /></LazyPage> },
-      { path: 'admin', element: <LazyPage><AdminPage /></LazyPage> },
+      { path: 'analytics', element: <AdminOnly><LazyPage><AnalyticsPage /></LazyPage></AdminOnly> },
+      { path: 'admin', element: <AdminOnly><LazyPage><AdminPage /></LazyPage></AdminOnly> },
       { path: 'profile', element: <LazyPage><ProfilePage /></LazyPage> },
       { path: 'settings', element: <Navigate to="/profile" replace /> },
       { path: 'activity', element: <Navigate to="/" replace /> },
@@ -44,7 +55,6 @@ export const router = createBrowserRouter([
       { path: 'applications', element: <Navigate to="/" replace /> },
       { path: 'assistant', element: <Navigate to="/" replace /> },
       { path: 'community', element: <Navigate to="/" replace /> },
-      { path: 'analytics', element: <Navigate to="/admin" replace /> },
       { path: 'help', element: <Navigate to="/" replace /> },
       { path: '*', element: <Navigate to="/" replace /> }
     ]

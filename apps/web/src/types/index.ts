@@ -69,6 +69,7 @@ export interface NotificationItem {
   group: 'Launches' | 'System' | 'Community' | 'AI';
   unread: boolean;
   createdAt: string;
+  targetUrl?: string;
 }
 
 export interface ActivityItem {

@@ -109,6 +109,7 @@ interface ApplicationStore {
     location: string;
     bio: string;
     avatar: string;
+    avatarUrl?: string;
     theme: 'light' | 'soft' | 'vibrant';
   };
   addApplication: (application: ManagedApplication) => void;
@@ -123,12 +124,13 @@ export const useApplicationStore = create<ApplicationStore>()(
     (set) => ({
       applications: managedApplications,
       profile: {
-        name: 'Samaksh Rastogi',
-        role: 'Platform Administrator',
-        email: 'demo@skcentral.local',
+        name: '',
+        role: '',
+        email: '',
         location: 'India',
-        bio: 'Building SK Central as the command center for all SK applications.',
-        avatar: 'SR',
+        bio: '',
+        avatar: '',
+        avatarUrl: '',
         theme: 'light'
       },
       addApplication: (application) =>
@@ -151,21 +153,24 @@ export const useApplicationStore = create<ApplicationStore>()(
     }),
     {
       name: 'sk-central-applications',
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         const state = persistedState as ApplicationStore;
         const seededBySlug = new Map(managedApplications.map((application) => [application.slug, application]));
+        const savedProfile = state.profile ?? {
+          name: '',
+          role: '',
+          email: '',
+          location: 'India',
+          bio: '',
+          avatar: '',
+          avatarUrl: '',
+          theme: 'light' as const
+        };
+        const hasLocalPlaceholderProfile = savedProfile.email.endsWith('@skcentral.local');
         return {
           ...state,
-          profile: state.profile ?? {
-            name: 'Samaksh Rastogi',
-            role: 'Platform Administrator',
-            email: 'demo@skcentral.local',
-            location: 'India',
-            bio: 'Building SK Central as the command center for all SK applications.',
-            avatar: 'SR',
-            theme: 'light'
-          },
+          profile: hasLocalPlaceholderProfile ? { ...savedProfile, name: '', role: '', email: '', bio: '', avatar: '' } : savedProfile,
           applications:
             state.applications
               ?.filter((application) => application.slug !== 'community')

@@ -1,8 +1,7 @@
 import { BookOpen, FileArchive, FileText, Search } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { MarkdownPreview } from '@/components/documentation/MarkdownPreview';
 import { useApplicationStore } from '@/store/applicationStore';
 
 export default function DocumentationPage() {
@@ -89,9 +88,7 @@ export default function DocumentationPage() {
             <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-black uppercase text-cyan-700">{activeDoc.type}</span>
           </div>
           {activeDoc.type === 'md' ? (
-            <div className="prose prose-slate max-w-none leading-7">
-              <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{activeDoc.content ?? ''}</ReactMarkdown>
-            </div>
+            <MarkdownPreview content={activeDoc.content ?? ''} />
           ) : activeDoc.type === 'pdf' && activeDoc.url ? (
             <iframe title={activeDoc.name} src={activeDoc.url} className="h-[620px] w-full rounded-2xl border border-slate-900/10 bg-white" />
           ) : (

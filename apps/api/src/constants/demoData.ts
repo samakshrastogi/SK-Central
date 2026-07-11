@@ -1,10 +1,3 @@
-export const demoUser = {
-  id: 'demo_admin',
-  name: 'Samaksh Rastogi',
-  role: 'Platform Administrator',
-  email: 'demo@skcentral.local'
-};
-
 export const demoProjects = [
   {
     name: 'SK Quiz Coach',
