@@ -19,7 +19,7 @@ type IdentityUserDocument = {
 const cookieOptions = () => ({
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  sameSite: env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
   path: '/',
   maxAge: env.SSO_SESSION_DAYS * 24 * 60 * 60 * 1000
 });
@@ -252,7 +252,7 @@ export async function logout(req: Request, res: Response, global = false) {
     else current.session.revokedAt = new Date();
     await current.session.save();
   }
-  res.clearCookie(env.SSO_COOKIE_NAME, { path: '/' });
+  res.clearCookie(env.SSO_COOKIE_NAME, { httpOnly: true, secure: env.NODE_ENV === 'production', sameSite: env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const), path: '/' });
 }
 
 export async function listSessions(req: Request) {
