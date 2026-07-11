@@ -3,7 +3,8 @@ import tls from 'node:tls';
 import { env } from '@/config/env.js';
 import { logger } from '@/utils/logger.js';
 
-const configured = () => Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+const smtpConfigured = () => Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+const resendConfigured = () => Boolean(env.RESEND_API_KEY);
 
 const readResponse = (socket: net.Socket) =>
   new Promise<string>((resolve, reject) => {
@@ -98,13 +99,49 @@ const upgradeToTls = (socket: net.Socket) =>
     tlsSocket.once('secureConnect', () => resolveOnce(tlsSocket));
   });
 
+const sendWithResend = async (input: { to: string; subject: string; html: string; text: string }) => {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: env.MAIL_FROM,
+      to: [input.to],
+      subject: input.subject,
+      html: input.html,
+      text: input.text
+    })
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Resend API failed with ${response.status}: ${details.slice(0, 500)}`);
+  }
+};
+
 export async function sendOtpEmail(input: { to: string; otp: string; purpose: 'verify_email' | 'reset_password' }) {
   const label = input.purpose === 'verify_email' ? 'Email verification' : 'Password reset';
   const subject = `SK Central ${label} OTP`;
   const html = `<p>Your SK Central OTP is:</p><h1>${input.otp}</h1><p>This code expires in ${env.OTP_TTL_MINUTES} minutes.</p>`;
   const text = `Your SK Central OTP is ${input.otp}. This code expires in ${env.OTP_TTL_MINUTES} minutes.`;
 
-  if (!configured()) {
+  if (resendConfigured()) {
+    try {
+      await sendWithResend({ to: input.to, subject, html, text });
+      return;
+    } catch (error) {
+      logger.error('OTP email delivery failed via Resend API', error);
+      const deliveryError = new Error('Email delivery failed via Resend. Check RESEND_API_KEY, verified sender domain, and Resend account status.') as Error & {
+        statusCode?: number;
+      };
+      deliveryError.statusCode = 502;
+      throw deliveryError;
+    }
+  }
+
+  if (!smtpConfigured()) {
     console.info(`[SK Central] ${label} OTP for ${input.to}: ${input.otp}`);
     return;
   }

@@ -17,6 +17,7 @@ const envSchema = z.object({
   SSO_SESSION_DAYS: z.coerce.number().default(3650),
   SSO_APP_TOKEN_MINUTES: z.coerce.number().default(10),
   MAIL_FROM: z.string().default('SK Central <hello@sk-hub.in>'),
+  RESEND_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(465),
   SMTP_TIMEOUT_MS: z.coerce.number().default(12_000),
