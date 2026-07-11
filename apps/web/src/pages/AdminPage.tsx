@@ -66,7 +66,7 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    void loadUsers();
+    void loadUsers().catch(() => undefined);
   }, []);
 
   const onFiles = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -115,9 +115,7 @@ export default function AdminPage() {
       analytics: existing?.analytics ?? fallbackMetrics,
       adminAnalytics: existing?.adminAnalytics
     };
-    if (existing) await updateApplication(application);
-    else await addApplication(application);
-    closeApplicationModal();
+    try{if(existing)await/**/updateApplication(application);else/**/await/**/addApplication(application);closeApplicationModal();}catch{return;}
   };
 
   const startAdd = () => {

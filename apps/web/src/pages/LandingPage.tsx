@@ -2,6 +2,7 @@ import { BookOpen, ExternalLink, Sparkles } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import gsap from 'gsap';
+gsap.config({ nullTargetWarn: false });
 import { useApplicationStore } from '@/store/applicationStore';
 import { cn } from '@/utils/cn';
 

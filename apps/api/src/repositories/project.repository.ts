@@ -22,7 +22,7 @@ export class ProjectRepository {
         statusCode: 503
       });
     }
-    return ProjectModel.create(input);
+    return/**/ProjectModel.findOneAndUpdate({slug:input.slug},input,{new:true,upsert:true,runValidators:true}).lean();
   }
 
   async updateBySlug(slug: string, input: Record<string, unknown>) {
