@@ -20,6 +20,7 @@ export function AppLayout() {
   const notificationItems = useNotificationStore((state) => state.items);
   const loadNotifications = useNotificationStore((state) => state.load);
   const loadApplications = useApplicationStore((state) => state.loadApplications);
+  const profile = useApplicationStore((state) => state.profile);
   const { user, initialized, loadSession } = useAuthStore();
   const location = useLocation();
   const unread = notificationItems.filter((notification) => notification.unread).length;
@@ -115,10 +116,10 @@ export function AppLayout() {
           </button>
           <NavLink
             to="/profile"
-            className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-cyan-400 via-amber-300 to-rose-400 text-sm font-black text-slate-950 shadow-sm"
+            className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-400 via-amber-300 to-rose-400 text-sm font-black text-slate-950 shadow-sm"
             aria-label="Profile"
           >
-            {getInitials(user.name)}
+            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : profile.avatar || getInitials(profile.name || user.name)}
           </NavLink>
         </div>
       </header>

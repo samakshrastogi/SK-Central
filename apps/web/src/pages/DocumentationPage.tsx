@@ -49,7 +49,7 @@ export default function DocumentationPage() {
               className={`w-full rounded-2xl p-3 text-left transition ${activeApp?.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
             >
               <strong className="block text-sm">{app.name}</strong>
-              <span className="text-xs opacity-75">{app.docs.length} documentation section{app.docs.length === 1 ? '' : 's'}</span>
+              <span className="text-xs opacity-75">{app.docs.length} documentation file{app.docs.length === 1 ? '' : 's'}</span>
             </button>
           ))}
         </div>
@@ -69,16 +69,10 @@ export default function DocumentationPage() {
           </a> : null}
         </header>
 
-        {activeApp?.docs.length ? <div className="mt-3 flex flex-wrap gap-2">
-          {activeApp.docs.map((doc, index) => (
-            <button
-              key={doc.id}
-              type="button"
-              onClick={() => setActiveDocId(doc.id)}
-              aria-label={`Open documentation section ${index + 1}`}
-              className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black transition ${activeDoc.id === doc.id ? 'bg-cyan-600 text-white' : 'bg-white/75 text-slate-700 hover:bg-cyan-50'}`}
-            >
-              Section {index + 1}
+        {activeApp && activeApp.docs.length > 1 ? <div className="mt-3 flex flex-wrap gap-2">
+          {activeApp.docs.map((doc) => (
+            <button key={doc.id} type="button" onClick={() => { setActiveDocId(doc.id); setReadingProgress(0); }} aria-label={`Open ${doc.name}`} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${activeDoc?.id === doc.id ? 'bg-slate-900 text-white' : 'bg-white/75 text-slate-700 hover:bg-slate-100'}`}>
+              <FileText size={14} /> {doc.name}
             </button>
           ))}
         </div> : null}

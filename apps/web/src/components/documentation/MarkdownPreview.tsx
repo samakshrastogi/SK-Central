@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Copy, Maximize2, Minimize2 } from 'lucide-react';
 import './MarkdownPreview.css';
 
 type MarkdownPreviewProps = {
@@ -30,69 +31,7 @@ const inlineMarkdown = (value: string) =>
       return `<a href="${href}"${target}>${label}</a>`;
     });
 
-const parseFlowNode = (value: string) => {
-  const label = /(?:[A-Za-z0-9_-]+)\["([^"]+)"\]/.exec(value)?.[1]
-    ?? /(?:[A-Za-z0-9_-]+)\['([^']+)'\]/.exec(value)?.[1]
-    ?? /(?:[A-Za-z0-9_-]+)\[([^\]]+)\]/.exec(value)?.[1]
-    ?? value.replace(/[()[\]{}"]/g, '').trim();
-
-  return inlineMarkdown(label);
-};
-
-const renderFlowchart = (content: string) => {
-  const edgePairs = content
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line && !line.toLowerCase().startsWith('flowchart') && !line.toLowerCase().startsWith('graph'))
-    .map((line) => line.split(/-->|---|==>/).map((part) => part.trim()))
-    .filter((parts) => parts.length >= 2);
-
-  if (!edgePairs.length) {
-    return `<pre><code>${escapeHtml(content)}</code></pre>`;
-  }
-
-  const nodeKey = (value: string) => value.split(/[\[({]/)[0].trim();
-  const labels = new Map<string, string>();
-  const children = new Map<string, Set<string>>();
-  const parents = new Map<string, Set<string>>();
-
-  edgePairs.forEach(([from, to]) => {
-    const fromKey = nodeKey(from);
-    const toKey = nodeKey(to);
-    labels.set(fromKey, parseFlowNode(from));
-    labels.set(toKey, parseFlowNode(to));
-    children.set(fromKey, new Set([...(children.get(fromKey) ?? []), toKey]));
-    parents.set(toKey, new Set([...(parents.get(toKey) ?? []), fromKey]));
-  });
-
-  const roots = [...labels.keys()].filter((key) => !parents.has(key));
-  const levels: string[][] = [];
-  const visited = new Set<string>();
-  let current = roots.length ? roots : [edgePairs[0] ? nodeKey(edgePairs[0][0]) : 'start'];
-
-  while (current.length) {
-    const unique = [...new Set(current)].filter((key) => labels.has(key) && !visited.has(key));
-    if (!unique.length) break;
-    levels.push(unique);
-    unique.forEach((key) => visited.add(key));
-    current = unique.flatMap((key) => [...(children.get(key) ?? [])]);
-  }
-
-  const remaining = [...labels.keys()].filter((key) => !visited.has(key));
-  if (remaining.length) levels.push(remaining);
-
-  return [
-    '<div class="markdown-flowchart" role="img" aria-label="Flowchart"><div class="markdown-flowchart-canvas">',
-    ...levels.map((level, levelIndex) => `
-      <div class="markdown-flowchart-level ${level.length > 1 ? 'is-branch' : ''}">
-        ${level.map((key) => `<span class="markdown-flowchart-node"><small>Step ${[...labels.keys()].indexOf(key) + 1}</small>${labels.get(key) ?? key}</span>`).join('')}
-      </div>
-      ${levelIndex < levels.length - 1 ? '<div class="markdown-flowchart-connector" aria-hidden="true"></div>' : ''}
-    `),
-    '</div></div>'
-  ].join('');
-};
+const renderFlowchart = (content: string) => `<div class="markdown-flowchart" role="img" aria-label="Flowchart"><div class="mermaid">${escapeHtml(content)}</div></div>`;
 
 const isFlowchartBlock = (content: string) => {
   const firstLine = content.trimStart().split('\n')[0]?.trim().toLowerCase() ?? '';
@@ -210,7 +149,7 @@ const renderMarkdown = (content: string) => {
       continue;
     }
 
-    const listItem = /^\s*[-*]\s+(.+)$/.exec(line);
+    const listItem = /^\s*(?:[-*]|\d+[.)])\s+(.+)$/.exec(line);
     if (listItem) {
       if (!listOpen) {
         html.push('<ul>');
@@ -219,8 +158,9 @@ const renderMarkdown = (content: string) => {
 
       if (tocMode) {
         tocIndex += 1;
-        const cleanLabel = listItem[1].replace(/^\s*(?:#\s*)?\d+[.)]?\s*(?:#\s*)?/, '').trim();
-        html.push(`<li class="markdown-toc-link"><span>${tocIndex}</span><a href="#${slugify(cleanLabel)}">${inlineMarkdown(cleanLabel)}</a></li>`);
+        const linkedLabel = /^\[([^\]]+)\]\([^)]+\)$/.exec(listItem[1])?.[1] ?? listItem[1];
+        const cleanLabel = linkedLabel.replace(/^(?:\s*#*\s*\d+[.)]?\s*)+/, '').replace(/^#+\s*/, '').trim();
+        html.push(`<li class="markdown-toc-link"><span>${tocIndex}.</span><a href="#${slugify(cleanLabel)}">${inlineMarkdown(cleanLabel)}</a></li>`);
       } else {
         html.push(`<li>${inlineMarkdown(listItem[1])}</li>`);
       }
@@ -252,11 +192,34 @@ const renderMarkdown = (content: string) => {
 
 export function MarkdownPreview({ content }: MarkdownPreviewProps) {
   const html = useMemo(() => renderMarkdown(content), [content]);
+  const rootRef = useRef<HTMLElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const hasFlowchart = useMemo(() => /```(?:mermaid)?\s*(?:flowchart|graph)/i.test(content), [content]);
+
+  useEffect(() => {
+    if (!rootRef.current || !hasFlowchart) return;
+    let cancelled = false;
+    void import('mermaid').then(({ default: mermaid }) => {
+      if (cancelled || !rootRef.current) return;
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: 'base',
+        flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true },
+        themeVariables: { primaryColor: '#eeecff', primaryBorderColor: '#8b5cf6', primaryTextColor: '#111827', lineColor: '#374151', fontFamily: 'ui-sans-serif, system-ui, sans-serif', fontSize: '17px' }
+      });
+      void mermaid.run({ nodes: rootRef.current.querySelectorAll<HTMLElement>('.mermaid'), suppressErrors: true });
+    });
+    return () => { cancelled = true; };
+  }, [hasFlowchart, html]);
 
   return (
-    <article
-      className="markdown-preview"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className={expanded ? 'markdown-preview-expanded' : undefined}>
+      {hasFlowchart ? <div className="markdown-preview-tools">
+        <button type="button" onClick={() => void navigator.clipboard.writeText(content)} title="Copy Markdown"><Copy size={16} /></button>
+        <button type="button" onClick={() => setExpanded((value) => !value)} title={expanded ? 'Exit expanded preview' : 'Expand preview'}>{expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
+      </div> : null}
+      <article ref={rootRef} className="markdown-preview" dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
   );
 }
