@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart3, BookOpenCheck, Brain, Clock, FileQuestion, Gauge, GraduationCap, LogIn, MousePointerClick, Target, UsersRound } from 'lucide-react';
 import { api } from '@/services/api';
 import { useApplicationStore } from '@/store/applicationStore';
@@ -80,6 +80,9 @@ export default function AnalyticsPage() {
   const [skQuiz, setSkQuiz] = useState<SkQuizIntegrationState>({ connected: false, message: 'Waiting for SK Quiz analytics.', data: null });
   const [activeProject, setActiveProject] = useState('sk-central');
   const [activeModal, setActiveModal] = useState<'users' | 'logins' | 'visits' | 'time' | null>(null);
+  const [liveTick, setLiveTick] = useState(Date.now());
+  const sessionStartedAt = useRef(Date.now());
+  const initialActiveSeconds = useRef<number | null>(null);
   const applications = useApplicationStore((state) => state.applications);
   const projectTabs = useMemo(() => {
     const slugs = ['sk-central', 'sk-quiz', ...applications.map((app) => app.slug)]
@@ -91,9 +94,14 @@ export default function AnalyticsPage() {
     const load = async () => {
       const response = await api.get('/auth/identity-analytics');
       setData(response.data.data);
+      if (initialActiveSeconds.current === null) {
+        initialActiveSeconds.current = (response.data.data.activities as ActivityRow[])
+          .filter((item) => item.type === 'active_time')
+          .reduce((sum, item) => sum + (item.durationSeconds ?? 0), 0);
+      }
     };
     void load();
-    const interval = window.setInterval(load, 20_000);
+    const interval = window.setInterval(load, 5_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -103,7 +111,12 @@ export default function AnalyticsPage() {
       setSkQuiz(response.data.data);
     };
     void load();
-    const interval = window.setInterval(load, 20_000);
+    const interval = window.setInterval(load, 5_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setLiveTick(Date.now()), 1_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -210,10 +223,13 @@ export default function AnalyticsPage() {
     ]);
   }, [activeTimeDateColumns, activeTimeRows]);
 
+  const storedActiveSeconds = activeTimeRows.reduce((sum, row) => sum + row.seconds, 0);
+  const sessionElapsedSeconds = document.visibilityState === 'visible' ? Math.max(0, Math.floor((liveTick - sessionStartedAt.current) / 1000)) : 0;
+  const liveActiveSeconds = Math.max(storedActiveSeconds, (initialActiveSeconds.current ?? storedActiveSeconds) + sessionElapsedSeconds);
   const cards = [
     { label: 'Unique Users', value: data.users.length, icon: UsersRound, modal: 'users' as const },
     { label: 'Login Events', value: loginRows.reduce((sum, row) => sum + row.count, 0), icon: LogIn, modal: 'logins' as const },
-    { label: 'Active Time', value: formatDuration(activeTimeRows.reduce((sum, row) => sum + row.seconds, 0)), icon: Clock, modal: 'time' as const },
+    { label: 'Active Time', value: formatDuration(liveActiveSeconds), icon: Clock, modal: 'time' as const },
     { label: 'SK Quiz Visits', value: visitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'visits' as const }
   ];
   const skQuizSummary = mergeMetricSources(skQuiz.data, [
@@ -284,7 +300,7 @@ export default function AnalyticsPage() {
       title: 'Average Active Time',
       columns: ['S.no.', 'Users', 'Email ID', 'Platform', ...activeTimeDateColumns],
       rows: activeTimePivotRows,
-      footer: `Total active time: ${formatDuration(activeTimeRows.reduce((sum, row) => sum + row.seconds, 0))}`
+      footer: `Live active time: ${formatDuration(liveActiveSeconds)}`
     },
     visits: {
       title: 'SK Quiz Visits',
@@ -300,6 +316,7 @@ export default function AnalyticsPage() {
         <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Smart Analytics</p>
         <h1 className="mt-1 text-3xl font-black text-slate-950">SK Intelligence Dashboard</h1>
         <p className="mt-1 text-sm font-semibold text-slate-500">Central identity, platform usage, SK Quiz visits, and application-level analytics.</p>
+        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Live · synced automatically</div>
         <div className="mt-4 flex gap-2 overflow-x-auto">
           {projectTabs.map((project) => (
             <button key={project} type="button" onClick={() => setActiveProject(project)} className={`rounded-2xl px-4 py-2 text-xs font-black ${activeProject === project ? 'bg-slate-950 text-white' : 'bg-white/80 text-slate-600'}`}>

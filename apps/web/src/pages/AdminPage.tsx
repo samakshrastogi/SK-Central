@@ -28,7 +28,7 @@ interface AuditLog {
   createdAt: string;
   actorUserId?: { name: string; email: string };
   targetUserId?: { name: string; email: string };
-  metadata?: { previousRole?: string; nextRole?: string };
+  metadata?: { previousRole?: string; nextRole?: string; resourceName?: string; resourceType?: string };
 }
 
 const defaultForm: ApplicationForm = {
@@ -67,6 +67,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     void loadUsers().catch(() => undefined);
+    const interval = window.setInterval(() => void loadUsers().catch(() => undefined), 5_000);
+    return () => window.clearInterval(interval);
   }, []);
 
   const onFiles = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -115,7 +117,7 @@ export default function AdminPage() {
       analytics: existing?.analytics ?? fallbackMetrics,
       adminAnalytics: existing?.adminAnalytics
     };
-    try{if(existing)await/**/updateApplication(application);else/**/await/**/addApplication(application);closeApplicationModal();}catch{return;}
+    try{if(existing)await/**/updateApplication(application);else/**/await/**/addApplication(application);await loadUsers();closeApplicationModal();}catch{return;}
   };
 
   const startAdd = () => {
@@ -212,7 +214,7 @@ export default function AdminPage() {
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-2">
                         <button type="button" onClick={() => startEdit(application)} className="rounded-xl bg-cyan-100 p-2 text-cyan-700" aria-label={`Edit ${application.name}`}><Pencil size={15} /></button>
-                        <button type="button" onClick={() => void deleteApplication(application.id)} className="rounded-xl bg-rose-100 p-2 text-rose-700" aria-label={`Delete ${application.name}`}><Trash2 size={15} /></button>
+                        <button type="button" onClick={() => void deleteApplication(application.id).then(loadUsers)} className="rounded-xl bg-rose-100 p-2 text-rose-700" aria-label={`Delete ${application.name}`}><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -225,13 +227,19 @@ export default function AdminPage() {
 
         <div className="glass rounded-[1.5rem] p-4">
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><Activity size={18} /> Activity Log</h2>
-          <div className="mt-3 max-h-[520px] space-y-2 overflow-y-auto pr-1">
-            {audits.length ? audits.map((audit) => (
-              <div key={audit._id} className="rounded-2xl bg-white/75 p-3 text-sm font-bold text-slate-700">
-                <span className="block text-[0.68rem] font-black uppercase tracking-wide text-slate-400">{new Date(audit.createdAt).toLocaleString()}</span>
-                {audit.actorUserId?.name ?? 'System'} performed <span className="font-black text-slate-950">{audit.action}</span> for {audit.targetUserId?.name ?? 'unknown user'} {audit.metadata?.nextRole ? `(${audit.metadata.previousRole} -> ${audit.metadata.nextRole})` : ''}.
-              </div>
-            )) : <p className="rounded-2xl bg-white/75 p-4 text-sm font-bold text-slate-500">No admin logs yet.</p>}
+          <div className="mt-3 max-h-[520px] overflow-auto rounded-2xl border border-slate-900/10 bg-white/70">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-white/95 font-black uppercase tracking-wide text-slate-500 backdrop-blur"><tr><th className="px-3 py-3">Date & time</th><th className="px-3 py-3">Admin</th><th className="px-3 py-3">Action</th><th className="px-3 py-3">Changed item</th><th className="px-3 py-3">Details</th></tr></thead>
+              <tbody>{audits.length ? audits.map((audit) => (
+                <tr key={audit._id} className="border-t border-slate-900/5 align-top">
+                  <td className="whitespace-nowrap px-3 py-3 font-bold text-slate-500">{new Date(audit.createdAt).toLocaleString()}</td>
+                  <td className="px-3 py-3"><strong className="block text-slate-800">{audit.actorUserId?.name ?? 'System'}</strong><span className="text-slate-500">{audit.actorUserId?.email ?? 'Automated'}</span></td>
+                  <td className="px-3 py-3"><span className="rounded-full bg-cyan-100 px-2 py-1 font-black text-cyan-800">{audit.action.replaceAll('_', ' ')}</span></td>
+                  <td className="px-3 py-3 font-bold text-slate-700">{audit.metadata?.resourceName ?? audit.targetUserId?.name ?? 'System'}</td>
+                  <td className="px-3 py-3 font-semibold text-slate-500">{audit.metadata?.nextRole ? `${audit.metadata.previousRole} → ${audit.metadata.nextRole}` : audit.metadata?.resourceType ?? '—'}</td>
+                </tr>
+              )) : <tr><td colSpan={5} className="px-3 py-6 font-bold text-slate-500">No admin logs yet.</td></tr>}</tbody>
+            </table>
           </div>
         </div>
       </section>

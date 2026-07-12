@@ -86,7 +86,7 @@ const renderFlowchart = (content: string) => {
     '<div class="markdown-flowchart" role="img" aria-label="Flowchart"><div class="markdown-flowchart-canvas">',
     ...levels.map((level, levelIndex) => `
       <div class="markdown-flowchart-level ${level.length > 1 ? 'is-branch' : ''}">
-        ${level.map((key) => `<span class="markdown-flowchart-node">${labels.get(key) ?? key}</span>`).join('')}
+        ${level.map((key) => `<span class="markdown-flowchart-node"><small>Step ${[...labels.keys()].indexOf(key) + 1}</small>${labels.get(key) ?? key}</span>`).join('')}
       </div>
       ${levelIndex < levels.length - 1 ? '<div class="markdown-flowchart-connector" aria-hidden="true"></div>' : ''}
     `),
@@ -219,7 +219,8 @@ const renderMarkdown = (content: string) => {
 
       if (tocMode) {
         tocIndex += 1;
-        html.push(`<li class="markdown-toc-link"><span>${tocIndex}.</span><a href="#${slugify(listItem[1])}"># ${inlineMarkdown(listItem[1])}</a></li>`);
+        const cleanLabel = listItem[1].replace(/^\s*(?:#\s*)?\d+[.)]?\s*(?:#\s*)?/, '').trim();
+        html.push(`<li class="markdown-toc-link"><span>${tocIndex}</span><a href="#${slugify(cleanLabel)}">${inlineMarkdown(cleanLabel)}</a></li>`);
       } else {
         html.push(`<li>${inlineMarkdown(listItem[1])}</li>`);
       }

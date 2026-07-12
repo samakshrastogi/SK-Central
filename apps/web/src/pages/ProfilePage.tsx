@@ -1,4 +1,4 @@
-import { BadgeCheck, Bell, CalendarDays, Camera, LogOut, Mail, MapPin, Palette, Shield, Sparkles, UserRound } from 'lucide-react';
+import { BadgeCheck, Bell, CalendarDays, Camera, CheckCircle2, LogOut, Mail, MapPin, Palette, Shield, Sparkles, UserRound } from 'lucide-react';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import gsap from 'gsap';
@@ -37,6 +37,8 @@ export default function ProfilePage() {
   const displayBio = profile.bio || 'Manage your SK applications, documents, analytics, and connected sessions from one secure identity.';
   const displayAvatar = profile.avatar || getInitials(displayName || displayEmail);
   const permissions = user?.permissions?.length ? user.permissions : ['apps:read'];
+  const profileFields = [displayName, displayEmail, profile.location, profile.role, profile.bio, profile.avatarUrl || profile.avatar];
+  const profileCompletion = Math.round((profileFields.filter(Boolean).length / profileFields.length) * 100);
   const onAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -65,7 +67,9 @@ export default function ProfilePage() {
             <h1 className="text-3xl font-black">{displayName}</h1>
             <BadgeCheck className="text-cyan-300" size={22} />
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-300">{displayBio}</p>
+          <div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-cyan-300/15 px-3 py-1 text-xs font-black text-cyan-200">{user?.role ?? 'user'} account</span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-3 py-1 text-xs font-black text-emerald-200"><CheckCircle2 size={13} /> Active</span></div>
+          <p className="mt-4 text-sm leading-6 text-slate-300">{displayBio}</p>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4"><div className="flex items-center justify-between text-xs font-black"><span>Profile strength</span><span className="text-cyan-300">{profileCompletion}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-amber-200 to-rose-300 transition-all" style={{ width: `${profileCompletion}%` }} /></div><p className="mt-2 text-xs text-slate-400">Complete your details to personalize SK Auth across every connected app.</p></div>
           <button
             type="button"
             onClick={() => void signOut()}

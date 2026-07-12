@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { FileText, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { MarkdownPreview } from '@/components/documentation/MarkdownPreview';
@@ -11,6 +11,7 @@ export default function DocumentationPage() {
   const [activeSlug, setActiveSlug] = useState(initial);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [readingProgress, setReadingProgress] = useState(0);
   const activeApp = applications.find((app) => app.slug === activeSlug) ?? applications[0];
   const activeDoc = activeApp?.docs.find((doc) => doc.id === activeDocId) ?? activeApp?.docs[0];
   const filtered = useMemo(() => {
@@ -82,7 +83,12 @@ export default function DocumentationPage() {
           ))}
         </div> : null}
 
-        <article className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-[1.4rem] border border-slate-900/10 bg-white/82 p-4 shadow-sm">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-4 py-2">
+          <span className="inline-flex min-w-0 items-center gap-2 text-xs font-black text-slate-600"><FileText size={15} className="text-cyan-700" /><span className="truncate">{activeDoc?.name ?? 'Select a document'}</span></span>
+          <span className="text-xs font-black text-cyan-700">{readingProgress}% read</span>
+        </div>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-gradient-to-r from-cyan-500 to-teal-400 transition-all" style={{ width: `${readingProgress}%` }} /></div>
+        <article onScroll={(event) => { const node = event.currentTarget; const max = node.scrollHeight - node.clientHeight; setReadingProgress(max > 0 ? Math.round((node.scrollTop / max) * 100) : 100); }} className="mt-2 min-h-0 flex-1 overflow-y-auto scroll-smooth rounded-[1.4rem] border border-slate-900/10 bg-white/82 p-4 shadow-sm">
           {!activeDoc ? (
             <div className="rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
               <strong className="block text-slate-950">No document selected.</strong>
