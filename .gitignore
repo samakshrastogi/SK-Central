@@ -8,3 +8,7 @@ logs
 coverage
 .DS_Store
 .vite
+.env.production
+**/.env.production
+!.env.production.example
+!**/.env.production.example
