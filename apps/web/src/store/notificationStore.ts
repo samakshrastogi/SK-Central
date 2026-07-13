@@ -11,7 +11,7 @@ interface NotificationState {
 
 let notificationLoadPromise: Promise<void> | null = null;
 let lastNotificationLoadAt = 0;
-const notificationRefreshMs = 120_000;
+const notificationRefreshMs = 60_000;
 
 const normalize = (item: Partial<NotificationItem>, index: number): NotificationItem => ({
   id: item.id ?? `notification-${index}`,
@@ -38,4 +38,5 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ items: get().items.map((item) => ({ ...item, unread: false })) });
   }
 }));
+
 

@@ -188,7 +188,7 @@ export default function AdminPage() {
             </label>
           </div>
           <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-900/10 bg-white/70">
-            <table className="min-w-[720px] w-full text-left text-sm">
+            <table className="min-w-[560px] w-full table-fixed text-left text-sm">
               <thead className="bg-white/80 text-[0.68rem] font-black uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Application</th>
@@ -202,7 +202,7 @@ export default function AdminPage() {
                   <tr key={application.id} className="border-t border-slate-900/5">
                     <td className="px-3 py-2">
                       <strong className="block text-slate-950">{application.name}</strong>
-                      <span className="block max-w-sm truncate text-xs font-semibold text-slate-500">{application.technologies.join(' + ')}</span>
+                      <span className="block max-w-[13rem] break-words text-xs font-semibold leading-4 text-slate-500 sm:max-w-sm">{application.technologies.join(' + ')}</span>
                     </td>
                     <td className="px-3 py-2"><span className="rounded-full bg-cyan-100 px-2 py-1 text-[0.68rem] font-black text-cyan-700">{application.status}</span></td>
                     <td className="px-3 py-2"><a href={application.liveLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-black text-cyan-700">Open <ExternalLink size={12} /></a></td>
@@ -223,7 +223,7 @@ export default function AdminPage() {
         <div className="glass rounded-[1.5rem] p-4">
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><Activity size={18} /> Activity Log</h2>
           <div className="mt-3 max-h-[420px] overflow-auto rounded-2xl border border-slate-900/10 bg-white/70">
-            <table className="min-w-[900px] w-full text-left text-xs">
+            <table className="min-w-[680px] w-full table-fixed text-left text-xs">
               <thead className="sticky top-0 bg-white/95 font-black uppercase tracking-wide text-slate-500 backdrop-blur"><tr><th className="px-3 py-3">Date & time</th><th className="px-3 py-3">Admin</th><th className="px-3 py-3">Action</th><th className="px-3 py-3">Changed item</th><th className="px-3 py-3">Details</th></tr></thead>
               <tbody>{audits.length ? audits.map((audit) => (
                 <tr key={audit._id} className="border-t border-slate-900/5 align-top">
@@ -231,7 +231,7 @@ export default function AdminPage() {
                   <td className="px-3 py-3"><strong className="block text-slate-800">{audit.actorUserId?.name ?? 'System'}</strong><span className="text-slate-500">{audit.actorUserId?.email ?? 'Automated'}</span></td>
                   <td className="px-3 py-3"><span className="rounded-full bg-cyan-100 px-2 py-1 font-black text-cyan-800">{audit.action.replaceAll('_', ' ')}</span></td>
                   <td className="px-3 py-3 font-bold text-slate-700">{audit.metadata?.resourceName ?? audit.targetUserId?.name ?? 'System'}</td>
-                  <td className="px-3 py-3 font-semibold text-slate-500">{audit.metadata?.nextRole ? `${audit.metadata.previousRole} → ${audit.metadata.nextRole}` : audit.metadata?.resourceType ?? '—'}</td>
+                  <td className="break-words px-3 py-3 font-semibold text-slate-500">{audit.metadata?.nextRole ? `${audit.metadata.previousRole} → ${audit.metadata.nextRole}` : audit.metadata?.resourceType ?? '—'}</td>
                 </tr>
               )) : <tr><td colSpan={5} className="px-3 py-6 font-bold text-slate-500">No admin logs yet.</td></tr>}</tbody>
             </table>
@@ -309,6 +309,7 @@ export default function AdminPage() {
     </div>
   );
 }
+
 
 
 

@@ -50,7 +50,9 @@ export function FloatingAssistant() {
         {
           role: 'assistant',
           content:
-            'I could not reach the AI service. Check that the API is running and `GEMINI_API_KEY` is configured if you want live Gemini responses.'
+            `Live SK ecosystem response is temporarily unavailable, so I am using the local dashboard fallback.
+
+I can still help you reason over SK Central, SK Quiz, documentation, analytics, application health, and admin workflows. If this keeps happening after deploy, check the SK Central API service health and confirm \`GEMINI_API_KEY\` is configured on the API environment.`
         }
       ]);
     }
@@ -88,7 +90,7 @@ export function FloatingAssistant() {
             initial={{ opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.98 }}
-            className="absolute bottom-40 right-4 flex h-[620px] max-h-[calc(100vh-10rem)] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-3xl glass"
+            className="absolute inset-x-3 bottom-24 flex h-[min(620px,calc(100dvh-8rem))] max-h-[calc(100dvh-8rem)] flex-col overflow-hidden rounded-3xl glass sm:inset-x-auto sm:right-4 sm:w-[calc(100vw-2rem)] sm:max-w-md"
             onMouseDown={(event) => event.stopPropagation()}
             role="dialog"
             aria-label="SK Central AI assistant"
@@ -167,5 +169,6 @@ export function FloatingAssistant() {
     </>
   );
 }
+
 
 

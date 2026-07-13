@@ -1,7 +1,8 @@
-import { BadgeCheck, Bell, CalendarDays, Camera, CheckCircle2, LogOut, Mail, MapPin, Palette, Shield, Sparkles, UserRound } from 'lucide-react';
+import { BadgeCheck, Bell, CalendarDays, Camera, CheckCircle2, KeyRound, LogOut, Mail, MapPin, Palette, Shield, Sparkles, UserRound, X } from 'lucide-react';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import gsap from 'gsap';
+import { api } from '@/services/api';
 import { useApplicationStore } from '@/store/applicationStore';
 import { getInitials, useAuthStore } from '@/store/authStore';
 
@@ -14,6 +15,14 @@ export default function ProfilePage() {
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const [section, setSection] = useState<'profile' | 'settings' | 'more'>('profile');
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordStep, setPasswordStep] = useState<'otp' | 'reset'>('otp');
+  const [passwordOtp, setPasswordOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   useEffect(() => {
     if (!rootRef.current) return;
@@ -49,6 +58,57 @@ export default function ProfilePage() {
   const displayBio = profile.bio || 'Manage your SK applications, documents, analytics, and connected sessions from one secure identity.';
   const displayAvatar = profile.avatar || getInitials(displayName || displayEmail);
   const permissions = user?.permissions?.length ? user.permissions : ['apps:read'];
+
+  const openPasswordModal = async () => {
+    if (!displayEmail || passwordBusy) return;
+    setPasswordModalOpen(true);
+    setPasswordStep('otp');
+    setPasswordOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setPasswordMessage('Sending password reset OTP...');
+    setPasswordBusy(true);
+    try {
+      await api.post('/auth/forgot-password', { email: displayEmail });
+      setPasswordMessage('OTP sent to your email. Enter it below to set a new password.');
+    } catch {
+      setPasswordError('Could not send OTP right now. Please try again.');
+      setPasswordMessage('');
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
+
+  const verifyPasswordOtp = () => {
+    if (!passwordOtp.trim()) {
+      setPasswordError('Enter the OTP sent to your email.');
+      return;
+    }
+    setPasswordError('');
+    setPasswordMessage('OTP added. Now enter your new password.');
+    setPasswordStep('reset');
+  };
+
+  const submitPasswordChange = async () => {
+    if (!displayEmail || passwordBusy) return;
+    setPasswordBusy(true);
+    setPasswordError('');
+    setPasswordMessage('Updating password...');
+    try {
+      await api.post('/auth/reset-password', { email: displayEmail, otp: passwordOtp, password: newPassword, confirmPassword });
+      setPasswordMessage('Password changed successfully. Use the new password next time you sign in.');
+      setNewPassword('');
+      setConfirmPassword('');
+      window.setTimeout(() => setPasswordModalOpen(false), 900);
+    } catch (error) {
+      const apiError = error as { response?: { data?: { message?: string } } };
+      setPasswordError(apiError.response?.data?.message ?? 'Could not change password. Check the OTP and password length.');
+      setPasswordMessage('');
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
   const profileFields = [displayName, displayEmail, profile.location, profile.role, profile.bio, profile.avatarUrl || profile.avatar];
   const profileCompletion = Math.round((profileFields.filter(Boolean).length / profileFields.length) * 100);
   const onAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -60,7 +120,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div ref={rootRef} className="grid h-full min-h-0 gap-3 overflow-hidden xl:grid-cols-[360px_1fr]">
+    <div ref={rootRef} className="grid min-h-0 gap-3 pb-28 xl:grid-cols-[360px_1fr]">
       <section data-profile className="relative overflow-hidden rounded-[2rem] border border-slate-900/10 bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.28)]">
         <div data-orbit className="absolute -right-24 -top-24 h-56 w-56 rounded-full border border-cyan-300/30" />
         <div className="relative">
@@ -104,7 +164,7 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="h-full min-h-0 space-y-3 overflow-hidden">
+      <section className="min-h-0 space-y-3">
         <div data-profile className="glass rounded-[1.5rem] p-2">
           <div className="flex flex-wrap gap-2">
             {[
@@ -185,6 +245,13 @@ export default function ProfilePage() {
                 Profile Image
                 <input type="file" accept="image/*" onChange={onAvatarUpload} className="rounded-2xl border border-slate-200 bg-white p-3" />
               </label>
+              <button
+                type="button"
+                onClick={() => void openPasswordModal()}
+                className="inline-flex w-fit items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-800 md:col-span-2"
+              >
+                <KeyRound size={17} /> Change password
+              </button>
             </div>
           </div>
         ) : null}
@@ -203,6 +270,51 @@ export default function ProfilePage() {
           </div>
         ) : null}
       </section>
+
+      {passwordModalOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm" onMouseDown={() => setPasswordModalOpen(false)}>
+          <div className="glass w-full max-w-md rounded-[2rem] p-5" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">SK Auth security</p>
+                <h2 className="mt-1 text-xl font-black text-slate-950">Change password</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">We verify this change with an OTP sent to {displayEmail}.</p>
+              </div>
+              <button type="button" onClick={() => setPasswordModalOpen(false)} className="rounded-2xl bg-white p-2 text-slate-600 shadow-sm">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <label className="grid gap-1 text-sm font-bold text-slate-700">
+                Email OTP
+                <input value={passwordOtp} onChange={(event) => setPasswordOtp(event.target.value)} inputMode="numeric" maxLength={6} className="rounded-2xl border-slate-200" />
+              </label>
+              {passwordStep === 'reset' ? (
+                <>
+                  <label className="grid gap-1 text-sm font-bold text-slate-700">
+                    New password
+                    <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" className="rounded-2xl border-slate-200" />
+                  </label>
+                  <label className="grid gap-1 text-sm font-bold text-slate-700">
+                    Confirm password
+                    <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" className="rounded-2xl border-slate-200" />
+                  </label>
+                </>
+              ) : null}
+              {passwordMessage ? <p className="rounded-2xl bg-emerald-50 p-3 text-xs font-bold text-emerald-700">{passwordMessage}</p> : null}
+              {passwordError ? <p className="rounded-2xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{passwordError}</p> : null}
+              <button
+                type="button"
+                disabled={passwordBusy}
+                onClick={passwordStep === 'otp' ? verifyPasswordOtp : () => void submitPasswordChange()}
+                className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white shadow-lg disabled:opacity-60"
+              >
+                {passwordStep === 'otp' ? 'Verify OTP' : 'Change password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

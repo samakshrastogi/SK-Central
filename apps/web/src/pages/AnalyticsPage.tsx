@@ -16,6 +16,7 @@ interface ActivityRow {
   dateKey: string;
   durationSeconds?: number;
   userId?: IdentityUserRow;
+  createdAt?: string;
 }
 
 interface IdentityAnalytics {
@@ -147,16 +148,19 @@ export default function AnalyticsPage() {
   }, [data.activities]);
 
   const visitRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; date: string; count: number }>();
+    const grouped = new Map<string, { user: string; email: string; date: string; count: number; buckets: Set<string> }>();
     data.activities.filter((item) => item.type === 'visit' && item.platform === 'sk-quiz').forEach((item) => {
       const user = item.userId?.name ?? 'Unknown';
       const email = item.userId?.email ?? '';
-      const key = `${user}-${item.dateKey}`;
-      const row = grouped.get(key) ?? { user, email, date: item.dateKey, count: 0 };
-      row.count += 1;
+      const createdAt = item.createdAt ? new Date(item.createdAt).getTime() : Number.NaN;
+      const tenMinuteBucket = Number.isFinite(createdAt) ? String(Math.floor(createdAt / 600_000)) : item.dateKey;
+      const key = `${user}-${email}-${item.dateKey}`;
+      const row = grouped.get(key) ?? { user, email, date: item.dateKey, count: 0, buckets: new Set<string>() };
+      row.buckets.add(tenMinuteBucket);
+      row.count = row.buckets.size;
       grouped.set(key, row);
     });
-    return [...grouped.values()];
+    return [...grouped.values()].map((row) => ({ user: row.user, email: row.email, date: row.date, count: row.count }));
   }, [data.activities]);
 
   const loginDateColumns = useMemo(() => {
@@ -224,12 +228,14 @@ export default function AnalyticsPage() {
   }, [activeTimeDateColumns, activeTimeRows]);
 
   const storedActiveSeconds = activeTimeRows.reduce((sum, row) => sum + row.seconds, 0);
+  const activeUserCount = Math.max(1, new Set(activeTimeRows.map((row) => row.email || row.user)).size || data.users.length || 1);
   const sessionElapsedSeconds = document.visibilityState === 'visible' ? Math.max(0, Math.floor((liveTick - sessionStartedAt.current) / 1000)) : 0;
   const liveActiveSeconds = Math.max(storedActiveSeconds, (initialActiveSeconds.current ?? storedActiveSeconds) + sessionElapsedSeconds);
+  const averageActiveSeconds = Math.floor(liveActiveSeconds / activeUserCount);
   const cards = [
     { label: 'Unique Users', value: data.users.length, icon: UsersRound, modal: 'users' as const },
     { label: 'Login Events', value: loginRows.reduce((sum, row) => sum + row.count, 0), icon: LogIn, modal: 'logins' as const },
-    { label: 'Active Time', value: formatDuration(liveActiveSeconds), icon: Clock, modal: 'time' as const },
+    { label: 'Avg Active Time', value: formatDuration(averageActiveSeconds), icon: Clock, modal: 'time' as const },
     { label: 'SK Quiz Visits', value: visitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'visits' as const }
   ];
   const skQuizSummary = mergeMetricSources(skQuiz.data, [
@@ -300,13 +306,13 @@ export default function AnalyticsPage() {
       title: 'Average Active Time',
       columns: ['S.no.', 'Users', 'Email ID', 'Platform', ...activeTimeDateColumns],
       rows: activeTimePivotRows,
-      footer: `Live active time: ${formatDuration(liveActiveSeconds)}`
+      footer: `Average active time: ${formatDuration(averageActiveSeconds)} - Total active time: ${formatDuration(liveActiveSeconds)}`
     },
     visits: {
       title: 'SK Quiz Visits',
       columns: ['S.no.', 'Users', 'Email ID', ...visitDateColumns],
       rows: visitPivotRows,
-      footer: `Total visits: ${visitRows.reduce((sum, row) => sum + row.count, 0)}`
+      footer: `Visits count once per user every 10 minutes. Total visits: ${visitRows.reduce((sum, row) => sum + row.count, 0)}`
     }
   };
 
@@ -437,4 +443,7 @@ function AnalyticsModal({ title, columns, rows, footer, onClose }: { title: stri
     </div>
   );
 }
+
+
+
 

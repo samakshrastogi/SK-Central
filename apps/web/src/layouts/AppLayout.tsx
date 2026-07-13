@@ -26,7 +26,7 @@ export function AppLayout() {
   const unread = notificationItems.filter((notification) => notification.unread).length;
   const isAdmin = user?.role === 'admin';
   const visibleNavigation = bottomNavigation.filter((item) => isAdmin || !['/admin', '/analytics'].includes(item.href));
-  const isViewportPage = location.pathname.startsWith('/documentation') || location.pathname.startsWith('/profile');
+  const isViewportPage = location.pathname.startsWith('/documentation');
 
   useEffect(() => {
     if (!isViewportPage) return;
@@ -54,7 +54,7 @@ export function AppLayout() {
     const loadWhenVisible = () => {
       if (document.visibilityState === 'visible') void loadNotifications();
     };
-    const interval = window.setInterval(loadWhenVisible, 120_000);
+    const interval = window.setInterval(loadWhenVisible, 60_000);
     window.addEventListener('focus', loadWhenVisible);
     return () => {
       window.clearInterval(interval);
@@ -146,12 +146,12 @@ export function AppLayout() {
           </NavLink>
         </div>
       </header>
-      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', isViewportPage ? 'h-[calc(100dvh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-4rem)] pt-3')}>
+      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', isViewportPage ? 'h-[calc(100dvh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-4rem)] pb-28 pt-3')}>
         <Outlet />
       </main>
       <nav
         ref={dockRef}
-        className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-[28px] border border-slate-900/10 bg-white/75 p-2 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl"
+        className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around gap-1 rounded-t-[28px] border border-slate-900/10 bg-white/90 p-2 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-auto sm:-translate-x-1/2 sm:justify-center sm:rounded-[28px] sm:bg-white/75"
         aria-label="Primary navigation"
       >
         {visibleNavigation.map((item) => (
@@ -182,5 +182,7 @@ export function AppLayout() {
     </div>
   );
 }
+
+
 
 
