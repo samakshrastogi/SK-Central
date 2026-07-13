@@ -28,8 +28,8 @@ export default function DocumentationPage() {
   };
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[280px_1fr]">
-      <aside className="glass sticky top-17 h-[calc(100vh-7rem)] rounded-[1.5rem] p-3">
+    <div className="grid h-full min-h-0 gap-2 overflow-hidden lg:grid-cols-[240px_1fr]">
+      <aside className="glass h-full min-h-0 overflow-hidden rounded-[1.25rem] p-2.5">
         <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/80 px-3 py-2">
           <Search size={16} className="text-slate-400" />
           <input
@@ -39,13 +39,13 @@ export default function DocumentationPage() {
             className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-0"
           />
         </div>
-        <div className="mt-3 h-[calc(100%-3.5rem)] space-y-2 overflow-y-auto pr-1">
+        <div className="scrollbar-hidden mt-2 h-[calc(100%-3rem)] space-y-1.5 overflow-y-auto">
           {filtered.map((app) => (
             <button
               key={app.id}
               type="button"
               onClick={() => selectApp(app.slug)}
-              className={`w-full rounded-2xl p-3 text-left transition ${activeApp?.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
+              className={`w-full rounded-xl p-2.5 text-left transition ${activeApp?.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
             >
               <strong className="block text-sm">{app.name}</strong>
               <span className="text-xs opacity-75">{app.docs.length} documentation file{app.docs.length === 1 ? '' : 's'}</span>
@@ -54,8 +54,8 @@ export default function DocumentationPage() {
         </div>
       </aside>
 
-      <section className="glass flex h-[calc(100vh-7rem)] flex-col rounded-[1.5rem] p-3">
-        <article className="min-h-0 flex-1 overflow-y-auto scroll-smooth rounded-[1.4rem] border border-slate-900/10 bg-white/82 p-4 shadow-sm">
+      <section className="glass flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] p-2">
+        <article className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto scroll-smooth rounded-[1rem] border border-slate-900/10 bg-white/82 p-3 shadow-sm">
           {!activeDoc ? (
             <div className="rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
               <strong className="block text-slate-950">No document selected.</strong>

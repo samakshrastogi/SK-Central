@@ -123,7 +123,7 @@ export function AppLayout() {
           </NavLink>
         </div>
       </header>
-      <main className="mx-auto min-h-[calc(100vh-3.5rem)] max-w-[1600px] px-3 pb-28 pt-3 sm:px-5">
+      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', location.pathname === '/documentation' ? 'h-[calc(100vh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-3.5rem)] pb-28 pt-3')}>
         <Outlet />
       </main>
       <nav

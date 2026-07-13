@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Maximize2, Share2, X } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import './MarkdownPreview.css';
 
 type MarkdownPreviewProps = {
@@ -194,7 +194,6 @@ const renderMarkdown = (content: string) => {
 export function MarkdownPreview({ content, platformName = 'SK platform' }: MarkdownPreviewProps) {
   const html = useMemo(() => renderMarkdown(content), [content]);
   const rootRef = useRef<HTMLElement>(null);
-  const [expanded, setExpanded] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
   const hasFlowchart = useMemo(() => html.includes('mermaid-source'), [html]);
 
@@ -207,12 +206,12 @@ export function MarkdownPreview({ content, platformName = 'SK platform' }: Markd
         startOnLoad: false,
         securityLevel: 'strict',
         theme: 'base',
-        flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true },
-        themeVariables: { primaryColor: '#eeecff', primaryBorderColor: '#8b5cf6', primaryTextColor: '#111827', lineColor: '#374151', fontFamily: 'ui-sans-serif, system-ui, sans-serif', fontSize: '17px' }
+        flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true, nodeSpacing: 24, rankSpacing: 30, diagramPadding: 6 },
+        themeVariables: { primaryColor: '#eeecff', primaryBorderColor: '#8b5cf6', primaryTextColor: '#111827', lineColor: '#374151', fontFamily: 'ui-sans-serif, system-ui, sans-serif', fontSize: '14px' }
       });
       const nodes = [...rootRef.current.querySelectorAll<HTMLElement>('.mermaid-source')];
       await Promise.all(nodes.map(async (node, index) => {
-        const source = (node.textContent ?? '').replace(/→/g, '-->');
+        const source = (node.textContent ?? '').replace(/\u2192/g, '-->');
         try {
           const { svg } = await mermaid.render(`sk-flow-${Date.now()}-${index}`, source);
           if (!cancelled) node.innerHTML = svg;
@@ -224,17 +223,10 @@ export function MarkdownPreview({ content, platformName = 'SK platform' }: Markd
     return () => { cancelled = true; };
   }, [hasFlowchart, html]);
 
-  useEffect(() => {
-    if (!expanded) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
-  }, [expanded]);
-
   const shareDocumentation = async () => {
     const shareData = {
       title: `${platformName} documentation`,
-      text: `Explore ${platformName} on the SK ecosystem—shared securely from SK Central.`,
+      text: `Explore ${platformName} on the SK ecosystem - shared securely from SK Central.`,
       url: window.location.href
     };
     try {
@@ -253,11 +245,10 @@ export function MarkdownPreview({ content, platformName = 'SK platform' }: Markd
   };
 
   return (
-    <div className={expanded ? 'markdown-preview-expanded' : undefined}>
+    <div>
       {hasFlowchart ? <div className="markdown-preview-tools">
         {shareStatus ? <span role="status">{shareStatus}</span> : null}
         <button type="button" onClick={() => void shareDocumentation()} title="Share documentation"><Share2 size={16} /></button>
-        <button type="button" onClick={() => setExpanded((value) => !value)} title={expanded ? 'Close expanded preview' : 'Expand preview'}>{expanded ? <X size={18} /> : <Maximize2 size={16} />}</button>
       </div> : null}
       <article ref={rootRef} className="markdown-preview" dangerouslySetInnerHTML={{ __html: html }} />
     </div>
