@@ -29,7 +29,7 @@ export default function DocumentationPage() {
 
   return (
     <div className="grid h-full min-h-0 gap-2 overflow-hidden lg:grid-cols-[240px_1fr]">
-      <aside className="glass h-full min-h-0 overflow-hidden rounded-[1.25rem] p-2.5">
+      <aside className="glass sticky top-0 h-full min-h-0 self-start overflow-hidden rounded-[1.25rem] p-2.5">
         <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/80 px-3 py-2">
           <Search size={16} className="text-slate-400" />
           <input
@@ -54,7 +54,7 @@ export default function DocumentationPage() {
         </div>
       </aside>
 
-      <section className="glass flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] p-2">
+      <section className="glass sticky top-0 flex h-full min-h-0 flex-col self-start overflow-hidden rounded-[1.25rem] p-2">
         <article className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto scroll-smooth rounded-[1rem] border border-slate-900/10 bg-white/82 p-3 shadow-sm">
           {!activeDoc ? (
             <div className="rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">

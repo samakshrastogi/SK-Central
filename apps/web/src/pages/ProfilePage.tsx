@@ -9,6 +9,7 @@ export default function ProfilePage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const profile = useApplicationStore((state) => state.profile);
   const updateProfile = useApplicationStore((state) => state.updateProfile);
+  const applications = useApplicationStore((state) => state.applications);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
@@ -48,11 +49,11 @@ export default function ProfilePage() {
   };
 
   return (
-    <div ref={rootRef} className="grid gap-4 xl:grid-cols-[420px_1fr]">
-      <section data-profile className="relative overflow-hidden rounded-[2rem] border border-slate-900/10 bg-slate-950 p-6 text-white shadow-[0_30px_100px_rgba(15,23,42,0.28)]">
+    <div ref={rootRef} className="grid h-full min-h-0 gap-3 overflow-hidden xl:grid-cols-[360px_1fr]">
+      <section data-profile className="relative overflow-hidden rounded-[2rem] border border-slate-900/10 bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.28)]">
         <div data-orbit className="absolute -right-24 -top-24 h-56 w-56 rounded-full border border-cyan-300/30" />
         <div className="relative">
-          <label className="group relative block h-28 w-28 cursor-pointer overflow-hidden rounded-[2rem] bg-gradient-to-br from-cyan-300 via-amber-200 to-rose-300 text-slate-950 shadow-2xl">
+          <label className="group relative block h-24 w-24 cursor-pointer overflow-hidden rounded-[2rem] bg-gradient-to-br from-cyan-300 via-amber-200 to-rose-300 text-slate-950 shadow-2xl">
             {profile.avatarUrl ? (
               <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -63,27 +64,27 @@ export default function ProfilePage() {
             </span>
             <input type="file" accept="image/*" onChange={onAvatarUpload} className="hidden" />
           </label>
-          <div className="mt-6 flex items-center gap-2">
-            <h1 className="text-3xl font-black">{displayName}</h1>
+          <div className="mt-4 flex items-center gap-2">
+            <h1 className="text-2xl font-black">{displayName}</h1>
             <BadgeCheck className="text-cyan-300" size={22} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2"><span className="rounded-full bg-cyan-300/15 px-3 py-1 text-xs font-black text-cyan-200">{user?.role ?? 'user'} account</span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-3 py-1 text-xs font-black text-emerald-200"><CheckCircle2 size={13} /> Active</span></div>
-          <p className="mt-4 text-sm leading-6 text-slate-300">{displayBio}</p>
-          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4"><div className="flex items-center justify-between text-xs font-black"><span>Profile strength</span><span className="text-cyan-300">{profileCompletion}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-amber-200 to-rose-300 transition-all" style={{ width: `${profileCompletion}%` }} /></div><p className="mt-2 text-xs text-slate-400">Complete your details to personalize SK Auth across every connected app.</p></div>
+          <p className="mt-3 line-clamp-3 text-sm leading-5 text-slate-300">{displayBio}</p>
+          <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3"><div className="flex items-center justify-between text-xs font-black"><span>Profile strength</span><span className="text-cyan-300">{profileCompletion}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-amber-200 to-rose-300 transition-all" style={{ width: `${profileCompletion}%` }} /></div><p className="mt-2 text-xs text-slate-400">Complete your details to personalize SK Auth across every connected app.</p></div>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-cyan-50"
+            className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-cyan-50"
           >
             <LogOut size={17} /> Logout
           </button>
-          <div className="mt-6 grid gap-3">
+          <div className="mt-3 grid gap-2">
             {[
               [Mail, displayEmail],
               [MapPin, profile.location],
               [CalendarDays, 'Joined 2026']
             ].map(([Icon, value]) => (
-              <div key={value as string} className="flex items-center gap-3 rounded-2xl bg-white/8 p-3 text-sm">
+              <div key={value as string} className="flex items-center gap-3 rounded-xl bg-white/8 p-2.5 text-xs">
                 <Icon size={17} className="text-cyan-300" />
                 {value as string}
               </div>
@@ -92,8 +93,8 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="space-y-4">
-        <div data-profile className="glass rounded-[2rem] p-3">
+      <section className="h-full min-h-0 space-y-3 overflow-hidden">
+        <div data-profile className="glass rounded-[1.5rem] p-2">
           <div className="flex flex-wrap gap-2">
             {[
               ['profile', 'Profile', UserRound],
@@ -104,7 +105,7 @@ export default function ProfilePage() {
                 key={id as string}
                 type="button"
                 onClick={() => setSection(id as 'profile' | 'settings' | 'more')}
-                className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-black ${section === id ? 'bg-slate-950 text-white' : 'bg-white/75 text-slate-600'}`}
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black ${section === id ? 'bg-slate-950 text-white' : 'bg-white/75 text-slate-600'}`}
               >
                 <Icon size={16} /> {label as string}
               </button>
@@ -113,36 +114,40 @@ export default function ProfilePage() {
         </div>
 
         {section === 'profile' ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <div data-profile className="glass rounded-[2rem] p-5">
-              <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><Shield size={19} /> Permissions</h2>
-              <div className="mt-4 flex flex-wrap gap-2">
+          <div className="grid min-h-0 gap-3 md:grid-cols-2">
+            <div data-profile className="glass rounded-[1.5rem] p-4">
+              <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><Shield size={19} /> Permissions</h2>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {permissions.map((permission) => (
                   <span key={permission} className="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-black text-cyan-800">{permission.replace(':', ' ')}</span>
                 ))}
               </div>
             </div>
-            <div data-profile className="glass rounded-[2rem] p-5">
-              <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><Sparkles size={19} /> Workspace</h2>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div data-profile className="glass rounded-[1.5rem] p-4">
+              <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><Sparkles size={19} /> Workspace</h2>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 {[
                   ['Theme', profile.theme],
                   ['AI Mode', 'Scoped'],
                   ['Docs', 'Enabled'],
                   ['Status', 'Active']
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl bg-white/75 p-3">
+                  <div key={label} className="rounded-xl bg-white/75 p-2.5">
                     <dt className="text-xs font-bold text-slate-500">{label}</dt>
                     <dd className="mt-1 font-black capitalize text-slate-950">{value}</dd>
                   </div>
                 ))}
               </dl>
             </div>
-            <div data-profile className="glass rounded-[2rem] p-5 md:col-span-2">
-              <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><Bell size={19} /> Recent Profile Activity</h2>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {['Opened SK Central overview', 'Reviewed application documentation', 'Checked admin analytics'].map((item) => (
-                  <div key={item} className="rounded-2xl bg-white/75 p-4 text-sm font-bold text-slate-700">{item}</div>
+            <div data-profile className="glass rounded-[1.5rem] p-4 md:col-span-2">
+              <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><Bell size={19} /> Smart Profile Insights</h2>
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
+                {[
+                  [`${applications.length} connected app${applications.length === 1 ? '' : 's'}`, 'Your SK identity is ready across managed platforms.'],
+                  [`${permissions.length} permission${permissions.length === 1 ? '' : 's'}`, user?.role === 'admin' ? 'Admin controls and analytics are available.' : 'Access expands automatically with your role.'],
+                  [profileCompletion === 100 ? 'Profile optimized' : `${100 - profileCompletion}% left to complete`, profileCompletion === 100 ? 'Your personalized workspace is fully configured.' : 'Add your title, bio, or avatar in More Info.']
+                ].map(([title, hint]) => (
+                  <div key={title} className="rounded-xl border border-slate-900/5 bg-white/75 p-3"><strong className="block text-sm text-slate-900">{title}</strong><span className="mt-1 block text-xs font-semibold leading-4 text-slate-500">{hint}</span></div>
                 ))}
               </div>
             </div>
@@ -150,8 +155,8 @@ export default function ProfilePage() {
         ) : null}
 
         {section === 'settings' ? (
-          <div data-profile className="glass rounded-[2rem] p-5">
-            <h2 className="text-xl font-black text-slate-950">Settings</h2>
+          <div data-profile className="glass rounded-[1.5rem] p-4">
+            <h2 className="text-lg font-black text-slate-950">Settings</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-bold text-slate-700">
                 Theme
@@ -174,15 +179,15 @@ export default function ProfilePage() {
         ) : null}
 
         {section === 'more' ? (
-          <div data-profile className="glass rounded-[2rem] p-5">
-            <h2 className="text-xl font-black text-slate-950">Tell SK Central More About You</h2>
+          <div data-profile className="glass rounded-[1.5rem] p-4">
+            <h2 className="text-lg font-black text-slate-950">Tell SK Central More About You</h2>
             <p className="mt-1 text-sm text-slate-600">This helps personalize application recommendations, docs, and admin workflows.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className="grid gap-1 text-sm font-bold text-slate-700">Name<input value={profile.name || user?.name || ''} onChange={onInput('name')} className="rounded-2xl border-slate-200" /></label>
               <label className="grid gap-1 text-sm font-bold text-slate-700">Title<input value={profile.role} onChange={onInput('role')} className="rounded-2xl border-slate-200" /></label>
               <label className="grid gap-1 text-sm font-bold text-slate-700">Email<input value={displayEmail} readOnly className="rounded-2xl border-slate-200 bg-slate-50 text-slate-500" /></label>
               <label className="grid gap-1 text-sm font-bold text-slate-700">Location<input value={profile.location} onChange={onInput('location')} className="rounded-2xl border-slate-200" /></label>
-              <label className="grid gap-1 text-sm font-bold text-slate-700 md:col-span-2">Project Bio<textarea value={profile.bio || displayBio} onChange={onInput('bio')} rows={4} className="rounded-2xl border-slate-200" /></label>
+              <label className="grid gap-1 text-sm font-bold text-slate-700 md:col-span-2">Project Bio<textarea value={profile.bio || displayBio} onChange={onInput('bio')} rows={3} className="rounded-2xl border-slate-200" /></label>
             </div>
           </div>
         ) : null}

@@ -26,6 +26,7 @@ export function AppLayout() {
   const unread = notificationItems.filter((notification) => notification.unread).length;
   const isAdmin = user?.role === 'admin';
   const visibleNavigation = bottomNavigation.filter((item) => isAdmin || !['/admin', '/analytics'].includes(item.href));
+  const isViewportPage = location.pathname.startsWith('/documentation') || location.pathname.startsWith('/profile');
 
   useEffect(() => {
     if (!initialized) void loadSession();
@@ -83,7 +84,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-950">
+    <div className={cn('bg-transparent text-slate-950', isViewportPage ? 'h-screen overflow-hidden' : 'min-h-screen')}>
       <header className="sticky top-0 z-40 border-b border-slate-900/10 bg-white/72 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-3 px-3 sm:px-5">
           <NavLink to="/" className="flex min-w-fit items-center gap-2" aria-label="SK Central overview">
@@ -123,7 +124,7 @@ export function AppLayout() {
           </NavLink>
         </div>
       </header>
-      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', location.pathname === '/documentation' ? 'h-[calc(100vh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-3.5rem)] pb-28 pt-3')}>
+      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', isViewportPage ? 'h-[calc(100vh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-3.5rem)] pb-28 pt-3')}>
         <Outlet />
       </main>
       <nav
