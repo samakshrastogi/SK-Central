@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowRight, KeyRound, LockKeyhole, MailCheck, Plus, RotateCcw, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, MailCheck, Plus, RotateCcw, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
 import gsap from 'gsap';
 import { api } from '@/services/api';
 import { getInitials, getRememberedIdentities, rememberIdentity, RememberedIdentity, useAuthStore, validateRememberedIdentities } from '@/store/authStore';
@@ -26,6 +26,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otp, setOtp] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -99,12 +101,11 @@ export default function LoginPage() {
       finish();
       return;
     }
-    setSelectedIdentity(identity);
-    setEmail(identity.email);
-    setName(identity.name);
+    setSelectedIdentity(null);
     setPassword('');
     setConfirmPassword('');
-    setMessage('Session expired. Enter the password for this account.');
+    setMessage('');
+    setError('This remembered account does not have an active browser session. Use Add new account or sign in again to refresh SK Auth.');
   };
 
   const switchMode = (nextMode: Mode) => {
@@ -258,7 +259,7 @@ export default function LoginPage() {
               {mode === 'login' ? (
                 <label data-auth-field className="mt-4 grid gap-1 text-xs font-black uppercase text-slate-500">
                   Password
-                  <input value={password} type="password" onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" className="rounded-2xl border-slate-200 text-sm font-bold normal-case" />
+                  <PasswordField value={password} onChange={setPassword} autoComplete="current-password" visible={showPassword} onToggle={() => setShowPassword((current) => !current)} />
                 </label>
               ) : null}
 
@@ -266,11 +267,11 @@ export default function LoginPage() {
                 <div data-auth-field className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
                     {mode === 'reset' ? 'New password' : 'Password'}
-                    <input value={password} type="password" onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" className="rounded-2xl border-slate-200 text-sm font-bold normal-case" />
+                    <PasswordField value={password} onChange={setPassword} autoComplete="new-password" visible={showPassword} onToggle={() => setShowPassword((current) => !current)} />
                   </label>
                   <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
                     Confirm password
-                    <input value={confirmPassword} type="password" onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" className="rounded-2xl border-slate-200 text-sm font-bold normal-case" />
+                    <PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((current) => !current)} />
                   </label>
                 </div>
               ) : null}
@@ -319,3 +320,37 @@ export default function LoginPage() {
     </main>
   );
 }
+function PasswordField({
+  value,
+  onChange,
+  autoComplete,
+  visible,
+  onToggle
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  visible: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <span className="relative">
+      <input
+        value={value}
+        type={visible ? 'text' : 'password'}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={autoComplete}
+        className="w-full rounded-2xl border-slate-200 pr-11 text-sm font-bold normal-case"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-950"
+        aria-label={visible ? 'Hide password' : 'Show password'}
+      >
+        {visible ? <EyeOff size={17} /> : <Eye size={17} />}
+      </button>
+    </span>
+  );
+}
+

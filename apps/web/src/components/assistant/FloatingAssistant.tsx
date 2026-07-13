@@ -7,9 +7,9 @@ import { api } from '@/services/api';
 import { useUiStore } from '@/store/uiStore';
 
 const suggestedPrompts = [
-  'Summarize project health',
+  'Summarize SK ecosystem health',
   'Find documentation gaps',
-  'Draft release notes',
+  'Explain SK Quiz user progress',
   'Show API performance'
 ];
 
@@ -17,7 +17,7 @@ const initialMessages = [
   {
     role: 'assistant',
     content:
-      'Hi, I am the SK Central assistant. I only answer questions about SK Central applications, analytics, and documentation.'
+      'Hi, I am the SK ecosystem assistant. I can help with SK Central, SK Quiz, connected applications, analytics, documentation, and platform health.'
   }
 ];
 
@@ -66,14 +66,16 @@ export function FloatingAssistant() {
       >
         <Bot size={24} />
       </button>
-      <button
-        type="button"
+      <a
+        href="https://www.linkedin.com/in/samaksh-rastogi-9638b9254/"
+        target="_blank"
+        rel="noreferrer"
         className="group fixed bottom-8 right-5 z-30 inline-flex h-13 w-13 items-center justify-center overflow-hidden rounded-2xl bg-white p-4 text-slate-950 shadow-[0_20px_50px_rgba(15,23,42,0.16)] transition-all duration-300 hover:w-72 hover:justify-start hover:gap-3"
-        aria-label="Developed by Samaksh Rastogi"
+        aria-label="Developed by Samaksh Rastogi on LinkedIn"
       >
         <BadgeCheck size={22} className="text-cyan-600" />
         <span className="hidden whitespace-nowrap text-sm font-black group-hover:inline">Developed by Samaksh Rastogi</span>
-      </button>
+      </a>
       <AnimatePresence>
         {open ? (
           <motion.div
@@ -98,7 +100,7 @@ export function FloatingAssistant() {
                 </span>
                 <div>
                   <h2 className="font-bold text-slate-950">AI Assistant</h2>
-                  <p className="text-xs text-slate-500">Gemini scoped to SK Central</p>
+                  <p className="text-xs text-slate-500">Gemini scoped to SK ecosystem</p>
                 </div>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
@@ -150,7 +152,7 @@ export function FloatingAssistant() {
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') send();
                   }}
-                  placeholder="Ask about projects, docs, analytics..."
+                  placeholder="Ask about SK Central, SK Quiz, docs, analytics..."
                   className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-950 placeholder:text-slate-400 focus:ring-0"
                 />
                 <button type="button" onClick={() => void send()} className="rounded-xl bg-cyan-500 p-2 text-white" aria-label="Send message">
@@ -165,3 +167,5 @@ export function FloatingAssistant() {
     </>
   );
 }
+
+

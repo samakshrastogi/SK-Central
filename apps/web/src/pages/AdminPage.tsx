@@ -167,28 +167,28 @@ export default function AdminPage() {
             <h1 className="mt-1 text-2xl font-black text-slate-950">Smart Control Center</h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">Manage applications, roles, and admin history from one compact surface.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={startAdd} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button type="button" onClick={startAdd} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white sm:w-auto">
               <Plus size={16} /> Add Application
             </button>
-            <button type="button" onClick={() => setUserAccessOpen(true)} className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 shadow-sm">
+            <button type="button" onClick={() => setUserAccessOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 shadow-sm sm:w-auto">
               <UserRoundCog size={16} /> Make Admin
             </button>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+      <section className="grid gap-3">
         <div className="glass rounded-[1.5rem] p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><ShieldCheck size={18} /> Managed Applications</h2>
-            <label className="flex min-w-[260px] items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/75 px-3 py-2">
+            <label className="flex w-full items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/75 px-3 py-2 sm:min-w-[260px] sm:w-auto">
               <Search size={15} className="text-slate-400" />
               <input value={applicationQuery} onChange={(event) => setApplicationQuery(event.target.value)} placeholder="Search apps" className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm focus:ring-0" />
             </label>
           </div>
-          <div className="mt-3 overflow-hidden rounded-2xl border border-slate-900/10 bg-white/70">
-            <table className="w-full text-left text-sm">
+          <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-900/10 bg-white/70">
+            <table className="min-w-[720px] w-full text-left text-sm">
               <thead className="bg-white/80 text-[0.68rem] font-black uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Application</th>
@@ -222,8 +222,8 @@ export default function AdminPage() {
 
         <div className="glass rounded-[1.5rem] p-4">
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-950"><Activity size={18} /> Activity Log</h2>
-          <div className="mt-3 max-h-[520px] overflow-auto rounded-2xl border border-slate-900/10 bg-white/70">
-            <table className="w-full text-left text-xs">
+          <div className="mt-3 max-h-[420px] overflow-auto rounded-2xl border border-slate-900/10 bg-white/70">
+            <table className="min-w-[900px] w-full text-left text-xs">
               <thead className="sticky top-0 bg-white/95 font-black uppercase tracking-wide text-slate-500 backdrop-blur"><tr><th className="px-3 py-3">Date & time</th><th className="px-3 py-3">Admin</th><th className="px-3 py-3">Action</th><th className="px-3 py-3">Changed item</th><th className="px-3 py-3">Details</th></tr></thead>
               <tbody>{audits.length ? audits.map((audit) => (
                 <tr key={audit._id} className="border-t border-slate-900/5 align-top">
@@ -309,3 +309,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+
