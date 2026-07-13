@@ -276,8 +276,6 @@ export async function createAppToken(req: Request, appId: string) {
       name: current.user.name,
       role: appRole,
       permissions: current.user.permissions,
-      avatarUrl: current.user.avatarUrl,
-      avatarInitials: current.user.avatarInitials,
       sid: String(current.session._id)
     }),
     user: current.user
@@ -378,3 +376,4 @@ export function getPublicUser(user: { _id: unknown; email: string; name: string;
     avatarInitials: user.avatarInitials ?? ''
   };
 }
+

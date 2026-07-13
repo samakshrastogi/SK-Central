@@ -14,6 +14,7 @@
     "build": "npm run build --workspace @sk-central/web && npm run build --workspace @sk-central/api",
     "lint": "npm run lint --workspace @sk-central/web && npm run lint --workspace @sk-central/api",
     "typecheck": "npm run typecheck --workspace @sk-central/web && npm run typecheck --workspace @sk-central/api",
+    "test": "npm run test --workspace @sk-central/api",
     "start": "npm run start --workspace @sk-central/api"
   },
   "engines": {
@@ -21,3 +22,4 @@
     "npm": ">=10.0.0"
   }
 }
+
