@@ -29,6 +29,21 @@ export function AppLayout() {
   const isViewportPage = location.pathname.startsWith('/documentation') || location.pathname.startsWith('/profile');
 
   useEffect(() => {
+    if (!isViewportPage) return;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyHeight = document.body.style.height;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.body.style.height = '100dvh';
+    window.scrollTo(0, 0);
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.height = previousBodyHeight;
+    };
+  }, [isViewportPage]);
+  useEffect(() => {
     if (!initialized) void loadSession();
   }, [initialized, loadSession]);
 
@@ -84,7 +99,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className={cn('bg-transparent text-slate-950', isViewportPage ? 'h-screen overflow-hidden' : 'min-h-screen')}>
+    <div className={cn('bg-transparent text-slate-950', isViewportPage ? 'fixed inset-0 h-[100dvh] overflow-hidden' : 'min-h-screen')}>
       <header className="sticky top-0 z-40 border-b border-slate-900/10 bg-white/72 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-3 px-3 sm:px-5">
           <NavLink to="/" className="flex min-w-fit items-center gap-2" aria-label="SK Central overview">
@@ -124,7 +139,7 @@ export function AppLayout() {
           </NavLink>
         </div>
       </header>
-      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', isViewportPage ? 'h-[calc(100vh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-3.5rem)] pb-28 pt-3')}>
+      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', isViewportPage ? 'h-[calc(100dvh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-3.5rem)] pb-28 pt-3')}>
         <Outlet />
       </main>
       <nav
