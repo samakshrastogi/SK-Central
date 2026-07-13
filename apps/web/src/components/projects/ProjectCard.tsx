@@ -51,7 +51,9 @@ export function ProjectCard({ project }: { project: Project }) {
             <BookOpen size={18} />
           </a>
           <a
-            href="#"
+            href={project.liveLink ?? "#"}
+            target={project.liveLink ? "_blank" : undefined}
+            rel={project.liveLink ? "noreferrer" : undefined}
             className="inline-flex items-center justify-center rounded-xl border border-slate-900/10 bg-white/70 px-3 text-slate-700 transition hover:bg-slate-100"
             aria-label={`Launch ${project.name}`}
           >

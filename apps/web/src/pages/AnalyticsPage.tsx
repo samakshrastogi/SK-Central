@@ -68,6 +68,23 @@ const pickString = (source: Record<string, unknown>, keys: string[], fallback: s
   return fallback;
 };
 
+
+const buildVisitRows = (activities: ActivityRow[], platform: string) => {
+  const grouped = new Map<string, { user: string; email: string; date: string; count: number; buckets: Set<string> }>();
+  activities.filter((item) => item.type === 'visit' && item.platform === platform).forEach((item) => {
+    const user = item.userId?.name ?? 'Unknown';
+    const email = item.userId?.email ?? '';
+    const createdAt = item.createdAt ? new Date(item.createdAt).getTime() : Number.NaN;
+    const tenMinuteBucket = Number.isFinite(createdAt) ? String(Math.floor(createdAt / 600_000)) : item.dateKey;
+    const key = `${user}-${email}-${item.dateKey}`;
+    const row = grouped.get(key) ?? { user, email, date: item.dateKey, count: 0, buckets: new Set<string>() };
+    row.buckets.add(tenMinuteBucket);
+    row.count = row.buckets.size;
+    grouped.set(key, row);
+  });
+  return [...grouped.values()].map((row) => ({ user: row.user, email: row.email, date: row.date, count: row.count }));
+};
+
 const formatDuration = (seconds: number) => {
   const safe = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(safe / 3600);
@@ -80,13 +97,13 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<IdentityAnalytics>({ users: [], activities: [] });
   const [skQuiz, setSkQuiz] = useState<SkQuizIntegrationState>({ connected: false, message: 'Waiting for SK Quiz analytics.', data: null });
   const [activeProject, setActiveProject] = useState('sk-central');
-  const [activeModal, setActiveModal] = useState<'users' | 'logins' | 'visits' | 'time' | null>(null);
+  const [activeModal, setActiveModal] = useState<'users' | 'logins' | 'quizVisits' | 'mailpilotVisits' | 'time' | null>(null);
   const [liveTick, setLiveTick] = useState(Date.now());
   const sessionStartedAt = useRef(Date.now());
   const initialActiveSeconds = useRef<number | null>(null);
   const applications = useApplicationStore((state) => state.applications);
   const projectTabs = useMemo(() => {
-    const slugs = ['sk-central', 'sk-quiz', ...applications.map((app) => app.slug)]
+    const slugs = ['sk-central', 'sk-quiz', 'sk-mailpilot', ...applications.map((app) => app.slug)]
       .map((slug) => (slug === 'sk-quiz-coach' ? 'sk-quiz' : slug));
     return [...new Set(slugs)];
   }, [applications]);
@@ -147,21 +164,8 @@ export default function AnalyticsPage() {
     return [...grouped.values()];
   }, [data.activities]);
 
-  const visitRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; date: string; count: number; buckets: Set<string> }>();
-    data.activities.filter((item) => item.type === 'visit' && item.platform === 'sk-quiz').forEach((item) => {
-      const user = item.userId?.name ?? 'Unknown';
-      const email = item.userId?.email ?? '';
-      const createdAt = item.createdAt ? new Date(item.createdAt).getTime() : Number.NaN;
-      const tenMinuteBucket = Number.isFinite(createdAt) ? String(Math.floor(createdAt / 600_000)) : item.dateKey;
-      const key = `${user}-${email}-${item.dateKey}`;
-      const row = grouped.get(key) ?? { user, email, date: item.dateKey, count: 0, buckets: new Set<string>() };
-      row.buckets.add(tenMinuteBucket);
-      row.count = row.buckets.size;
-      grouped.set(key, row);
-    });
-    return [...grouped.values()].map((row) => ({ user: row.user, email: row.email, date: row.date, count: row.count }));
-  }, [data.activities]);
+  const quizVisitRows = useMemo(() => buildVisitRows(data.activities, 'sk-quiz'), [data.activities]);
+  const mailpilotVisitRows = useMemo(() => buildVisitRows(data.activities, 'sk-mailpilot'), [data.activities]);
 
   const loginDateColumns = useMemo(() => {
     return [...new Set(loginRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
@@ -184,13 +188,13 @@ export default function AnalyticsPage() {
     ]);
   }, [loginDateColumns, loginRows]);
 
-  const visitDateColumns = useMemo(() => {
-    return [...new Set(visitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
-  }, [visitRows]);
+  const quizVisitDateColumns = useMemo(() => {
+    return [...new Set(quizVisitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
+  }, [quizVisitRows]);
 
-  const visitPivotRows = useMemo(() => {
+  const quizVisitPivotRows = useMemo(() => {
     const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
-    visitRows.forEach((row) => {
+    quizVisitRows.forEach((row) => {
       const key = `${row.email}-${row.user}`;
       const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
       current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
@@ -201,10 +205,30 @@ export default function AnalyticsPage() {
       index + 1,
       row.user,
       row.email,
-      ...visitDateColumns.map((date) => row.counts[date] ?? 0)
+      ...quizVisitDateColumns.map((date) => row.counts[date] ?? 0)
     ]);
-  }, [visitDateColumns, visitRows]);
+  }, [quizVisitDateColumns, quizVisitRows]);
 
+
+  const mailpilotVisitDateColumns = useMemo(() => {
+    return [...new Set(mailpilotVisitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
+  }, [mailpilotVisitRows]);
+
+  const mailpilotVisitPivotRows = useMemo(() => {
+    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
+    mailpilotVisitRows.forEach((row) => {
+      const key = `${row.email}-${row.user}`;
+      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
+      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
+      grouped.set(key, current);
+    });
+    return [...grouped.values()].map((row, index) => [
+      index + 1,
+      row.user,
+      row.email,
+      ...mailpilotVisitDateColumns.map((date) => row.counts[date] ?? 0)
+    ]);
+  }, [mailpilotVisitDateColumns, mailpilotVisitRows]);
   const activeTimeDateColumns = useMemo(() => {
     return [...new Set(activeTimeRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
   }, [activeTimeRows]);
@@ -236,7 +260,8 @@ export default function AnalyticsPage() {
     { label: 'Unique Users', value: data.users.length, icon: UsersRound, modal: 'users' as const },
     { label: 'Login Events', value: loginRows.reduce((sum, row) => sum + row.count, 0), icon: LogIn, modal: 'logins' as const },
     { label: 'Avg Active Time', value: formatDuration(averageActiveSeconds), icon: Clock, modal: 'time' as const },
-    { label: 'SK Quiz Visits', value: visitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'visits' as const }
+    { label: 'SK Quiz Visits', value: quizVisitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'quizVisits' as const },
+    { label: 'SK Mailpilot Visits', value: mailpilotVisitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'mailpilotVisits' as const }
   ];
   const skQuizSummary = mergeMetricSources(skQuiz.data, [
     'summary',
@@ -308,11 +333,17 @@ export default function AnalyticsPage() {
       rows: activeTimePivotRows,
       footer: `Average active time: ${formatDuration(averageActiveSeconds)} - Total active time: ${formatDuration(liveActiveSeconds)}`
     },
-    visits: {
+    quizVisits: {
       title: 'SK Quiz Visits',
-      columns: ['S.no.', 'Users', 'Email ID', ...visitDateColumns],
-      rows: visitPivotRows,
-      footer: `Visits count once per user every 10 minutes. Total visits: ${visitRows.reduce((sum, row) => sum + row.count, 0)}`
+      columns: ['S.no.', 'Users', 'Email ID', ...quizVisitDateColumns],
+      rows: quizVisitPivotRows,
+      footer: `Visits count once per user every 10 minutes. Total visits: ${quizVisitRows.reduce((sum, row) => sum + row.count, 0)}`
+    },
+    mailpilotVisits: {
+      title: 'SK Mailpilot Visits',
+      columns: ['S.no.', 'Users', 'Email ID', ...mailpilotVisitDateColumns],
+      rows: mailpilotVisitPivotRows,
+      footer: `Visits count once per user every 10 minutes. Total visits: ${mailpilotVisitRows.reduce((sum, row) => sum + row.count, 0)}`
     }
   };
 
@@ -321,7 +352,7 @@ export default function AnalyticsPage() {
       <section className="glass rounded-[2rem] p-5">
         <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Smart Analytics</p>
         <h1 className="mt-1 text-3xl font-black text-slate-950">SK Intelligence Dashboard</h1>
-        <p className="mt-1 text-sm font-semibold text-slate-500">Central identity, platform usage, SK Quiz visits, and application-level analytics.</p>
+        <p className="mt-1 text-sm font-semibold text-slate-500">Central identity, platform usage, SK Quiz and SK Mailpilot visits, and application-level analytics.</p>
         <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Live · synced automatically</div>
         <div className="mt-4 flex gap-2 overflow-x-auto">
           {projectTabs.map((project) => (
@@ -334,7 +365,7 @@ export default function AnalyticsPage() {
 
       {activeProject === 'sk-central' ? (
         <>
-          <section className="grid gap-2 md:grid-cols-4">
+          <section className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
             {cards.map(({ label, value, icon: Icon, modal }) => (
               <button key={label} type="button" onClick={() => setActiveModal(modal)} className="glass flex min-h-20 items-center gap-3 rounded-[1.4rem] p-3 text-left transition hover:-translate-y-0.5 hover:shadow-xl">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Icon size={18} /></span>
@@ -349,7 +380,7 @@ export default function AnalyticsPage() {
           <section className="glass rounded-[2rem] p-5">
             <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><BarChart3 size={20} /> Central identity intelligence</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-              SK Central owns identity-wide analytics only: unique users, login events, cross-platform active time, SK Quiz visit handoffs, notification activity, sessions, and role changes.
+              SK Central owns identity-wide analytics only: unique users, login events, cross-platform active time, SK Quiz and SK Mailpilot visit handoffs, notification activity, sessions, and role changes.
             </p>
           </section>
         </>

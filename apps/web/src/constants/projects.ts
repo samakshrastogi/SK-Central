@@ -20,7 +20,30 @@ export const projects: Project[] = [
       { label: 'Retention', value: '71%' }
     ],
     features: ['Adaptive practice', 'AI explanations', 'Leaderboards', 'Retention analytics'],
-    roadmap: ['SSO classrooms', 'Question import pipeline', 'Proctored challenge rooms']
+    roadmap: ['SSO classrooms', 'Question import pipeline', 'Proctored challenge rooms'],
+    liveLink: 'https://quiz.sk-hub.in'
+  },
+  {
+    id: 'project_sk_mailpilot',
+    slug: 'sk-mailpilot',
+    name: 'SK Mailpilot',
+    category: 'Productivity',
+    description: 'AI-assisted Gmail operations, inbox triage, replies, scheduling, and team workflows.',
+    longDescription:
+      'SK Mailpilot connects approved Gmail mailboxes to a shared workspace for intelligent inbox review, reply automation, scheduling, approvals, audit history, and sender analytics.',
+    status: 'Live',
+    version: '1.0.0',
+    technologies: ['React', 'Express', 'MongoDB', 'Gmail API'],
+    gradient: 'from-sky-400/30 via-cyan-400/20 to-blue-500/20',
+    logo: 'MP',
+    metrics: [
+      { label: 'Identity', value: 'SK Auth' },
+      { label: 'Mailboxes', value: 'Multi' },
+      { label: 'Updates', value: 'Live' }
+    ],
+    features: ['Inbox intelligence', 'AI replies', 'Scheduling', 'Audit and approvals'],
+    roadmap: ['Shared templates', 'Advanced rules', 'Delivery intelligence'],
+    liveLink: 'https://mailpilot.sk-hub.in'
   },
   {
     id: 'project_sk_flips',

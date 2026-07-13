@@ -8,6 +8,8 @@ SK Central is the identity provider for SK applications. Applications should not
 - SK Central API: `http://localhost:4002/api`
 - SK Quiz web: `http://localhost:5474`
 - SK Quiz API: `http://localhost:4001/api`
+- SK Mailpilot web: `http://localhost:5173`
+- SK Mailpilot API: `http://localhost:5000`
 
 ## Core Flow
 
@@ -24,6 +26,7 @@ SK Central is the identity provider for SK applications. Applications should not
 - `GET /auth/me`
 - `POST /auth/refresh`
 - `GET /auth/app-token?appId=sk-quiz`
+- `GET /auth/app-token?appId=sk-mailpilot`
 - `POST /auth/validate`
 - `GET /auth/sessions`
 - `POST /auth/logout`
@@ -35,7 +38,8 @@ SK Central is the identity provider for SK applications. Applications should not
 - Session records are stored in MongoDB as hashed opaque tokens.
 - SK applications receive short-lived signed app tokens, not the central session cookie.
 - Global logout revokes all central sessions for the user.
-- SK Quiz accepts SK Central app tokens signed with `SSO_TOKEN_SECRET` / `SK_CENTRAL_SSO_SECRET`.
+- SK Quiz and SK Mailpilot accept SK Central app tokens signed with `SSO_TOKEN_SECRET` / `SK_CENTRAL_SSO_SECRET`.
+- Google OAuth in SK Mailpilot is limited to connecting approved Gmail mailboxes; it is not a user sign-in provider.
 
 ## Adding Future Apps
 

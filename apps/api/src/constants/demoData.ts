@@ -9,6 +9,14 @@ export const demoProjects = [
     description: 'Adaptive quiz preparation with practice journeys, analytics, and AI guidance.'
   },
   {
+    name: 'SK Mailpilot',
+    slug: 'sk-mailpilot',
+    category: 'Productivity',
+    status: 'Live',
+    version: '1.0.0',
+    technologies: ['React', 'Express', 'MongoDB', 'Gmail API'],
+    description: 'AI-assisted Gmail operations with SK Central identity, inbox triage, replies, scheduling, and team workflows.'
+  },  {
     name: 'SK Flips',
     slug: 'sk-flips',
     category: 'Video',

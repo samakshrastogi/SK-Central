@@ -17,6 +17,7 @@ export interface Project {
   metrics: Array<{ label: string; value: string }>;
   features: string[];
   roadmap: string[];
+  liveLink?: string;
 }
 
 export type DocumentationType = 'md' | 'pdf' | 'docx';

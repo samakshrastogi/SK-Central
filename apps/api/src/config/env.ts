@@ -8,7 +8,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4002),
   TRUST_PROXY: z.string().default(process.env.NODE_ENV === 'production' ? '1' : 'false'),
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5475'),
-  ALLOWED_ORIGINS: z.string().default('http://localhost:5475,http://localhost:5474'),
+  ALLOWED_ORIGINS: z.string().default('http://localhost:5475,http://localhost:5474,http://localhost:5173'),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/sk-central'),
   DATABASE_NAME: z.string().default(process.env.NODE_ENV === 'production' ? 'central' : 'sk-central'),
   JWT_SECRET: z.string().default('development-only'),
