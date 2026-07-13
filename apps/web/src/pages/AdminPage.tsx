@@ -65,7 +65,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     void loadUsers().catch(() => undefined);
-    const interval = window.setInterval(() => void loadUsers().catch(() => undefined), 5_000);
+    const interval = window.setInterval(() => void loadUsers().catch(() => undefined), 30_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -309,5 +309,6 @@ export default function AdminPage() {
     </div>
   );
 }
+
 
 

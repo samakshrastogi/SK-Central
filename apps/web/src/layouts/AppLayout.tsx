@@ -51,8 +51,15 @@ export function AppLayout() {
     if (!user) return;
     void loadApplications();
     void loadNotifications();
-    const interval = window.setInterval(() => void loadNotifications(), 15_000);
-    return () => window.clearInterval(interval);
+    const loadWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadNotifications();
+    };
+    const interval = window.setInterval(loadWhenVisible, 120_000);
+    window.addEventListener('focus', loadWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', loadWhenVisible);
+    };
   }, [loadApplications, loadNotifications, user]);
 
   useEffect(() => {
@@ -175,3 +182,5 @@ export function AppLayout() {
     </div>
   );
 }
+
+

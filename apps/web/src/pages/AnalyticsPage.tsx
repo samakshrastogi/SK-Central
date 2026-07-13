@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
       }
     };
     void load();
-    const interval = window.setInterval(load, 5_000);
+    const interval = window.setInterval(load, 30_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -111,7 +111,7 @@ export default function AnalyticsPage() {
       setSkQuiz(response.data.data);
     };
     void load();
-    const interval = window.setInterval(load, 5_000);
+    const interval = window.setInterval(load, 30_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -437,3 +437,4 @@ function AnalyticsModal({ title, columns, rows, footer, onClose }: { title: stri
     </div>
   );
 }
+

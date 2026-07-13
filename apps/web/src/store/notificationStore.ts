@@ -9,6 +9,10 @@ interface NotificationState {
   markAllRead: () => Promise<void>;
 }
 
+let notificationLoadPromise: Promise<void> | null = null;
+let lastNotificationLoadAt = 0;
+const notificationRefreshMs = 120_000;
+
 const normalize = (item: Partial<NotificationItem>, index: number): NotificationItem => ({
   id: item.id ?? `notification-${index}`,
   title: item.title ?? 'Platform update',
@@ -34,3 +38,4 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ items: get().items.map((item) => ({ ...item, unread: false })) });
   }
 }));
+
