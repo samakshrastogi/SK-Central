@@ -16,8 +16,8 @@ export const useUiStore = create<UiState>((set) => ({
   assistantOpen: false,
   notificationsOpen: false,
   darkMode: true,
-  setCommandOpen: (commandOpen) => set({ commandOpen }),
-  setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
-  setNotificationsOpen: (notificationsOpen) => set({ notificationsOpen }),
+  setCommandOpen: (commandOpen) => set(commandOpen ? { commandOpen: true, assistantOpen: false, notificationsOpen: false } : { commandOpen: false }),
+  setAssistantOpen: (assistantOpen) => set(assistantOpen ? { assistantOpen: true, commandOpen: false, notificationsOpen: false } : { assistantOpen: false }),
+  setNotificationsOpen: (notificationsOpen) => set(notificationsOpen ? { notificationsOpen: true, commandOpen: false, assistantOpen: false } : { notificationsOpen: false }),
   toggleTheme: () => set((state) => ({ darkMode: !state.darkMode }))
 }));

@@ -76,11 +76,18 @@ export function FloatingAssistant() {
       </button>
       <AnimatePresence>
         {open ? (
-          <motion.section
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-slate-950/15 backdrop-blur-[2px]"
+            onMouseDown={() => setOpen(false)}
+          >          <motion.section
             initial={{ opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.98 }}
-            className="fixed bottom-40 right-4 z-40 flex h-[620px] max-h-[calc(100vh-10rem)] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-3xl glass"
+            className="absolute bottom-40 right-4 flex h-[620px] max-h-[calc(100vh-10rem)] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-3xl glass"
+            onMouseDown={(event) => event.stopPropagation()}
             role="dialog"
             aria-label="SK Central AI assistant"
           >
@@ -152,6 +159,7 @@ export function FloatingAssistant() {
               </div>
             </footer>
           </motion.section>
+          </motion.div>
         ) : null}
       </AnimatePresence>
     </>

@@ -28,7 +28,7 @@ export default function DocumentationPage() {
   };
 
   return (
-    <div className="grid h-[calc(100dvh-5rem)] min-h-0 max-h-[calc(100dvh-5rem)] gap-2 overflow-hidden lg:grid-cols-[240px_1fr]">
+    <div className="grid h-full min-h-0 max-h-full gap-2 overflow-hidden lg:grid-cols-[240px_1fr]">
       <aside className="glass sticky top-0 h-full min-h-0 self-start overflow-hidden rounded-[1.25rem] p-2.5">
         <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/80 px-3 py-2">
           <Search size={16} className="text-slate-400" />

@@ -38,8 +38,8 @@ export function GlobalSearch() {
   if (!commandOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/25 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
-      <section className="glass mx-auto mt-16 max-w-3xl overflow-hidden rounded-3xl">
+    <div className="fixed inset-0 z-50 bg-slate-950/25 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" onMouseDown={() => setCommandOpen(false)}>
+      <section className="glass mx-auto mt-16 max-w-3xl overflow-hidden rounded-3xl" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-slate-900/10 px-4 py-3">
           <Search className="text-cyan-600" size={20} aria-hidden="true" />
           <input
