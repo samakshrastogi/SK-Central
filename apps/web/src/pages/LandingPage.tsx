@@ -76,7 +76,7 @@ export default function LandingPage() {
                 <span
                   className={cn(
                     'absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black shadow-sm',
-                    app.status === 'Live' ? 'bg-emerald-100 text-emerald-800' : app.status === 'Beta' ? 'bg-cyan-100 text-cyan-800' : 'bg-amber-100 text-amber-800'
+                    app.status === 'Live' ? 'bg-emerald-100 text-emerald-800' : ['Testing', 'Preview'].includes(app.status) ? 'bg-cyan-100 text-cyan-800' : 'bg-amber-100 text-amber-800'
                   )}
                 >
                   {app.status}

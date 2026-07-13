@@ -12,7 +12,7 @@ export const demoProjects = [
     name: 'SK Flips',
     slug: 'sk-flips',
     category: 'Video',
-    status: 'Beta',
+    status: 'Testing',
     version: '1.4.2',
     technologies: ['React', 'Express', 'Multer', 'Socket.IO'],
     description: 'Short-form knowledge videos with uploads, subscriptions, and creator analytics.'

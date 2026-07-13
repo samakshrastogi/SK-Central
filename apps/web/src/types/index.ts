@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-export type ProjectStatus = 'Live' | 'Beta' | 'Preview' | 'Planned';
+export type ProjectStatus = 'Planned' | 'In Progress' | 'Testing' | 'Preview' | 'Live' | 'Maintenance';
 
 export interface Project {
   id: string;

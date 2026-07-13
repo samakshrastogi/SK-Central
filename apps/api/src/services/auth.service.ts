@@ -4,13 +4,15 @@ import { IdentityActivityModel, IdentityAuditLogModel, IdentityOtpModel, Identit
 import { sendOtpEmail } from '@/services/mail.service.js';
 import { createOpaqueToken, hashPassword, hashToken, signAppToken, verifyPassword } from '@/services/token.service.js';
 
-const publicUserFields = '_id email name role permissions disabledAt';
+const publicUserFields = '_id email name role permissions avatarUrl avatarInitials disabledAt';
 type IdentityUserDocument = {
   _id: unknown;
   email: string;
   name: string;
   role: 'user' | 'admin' | 'student';
   permissions?: string[];
+  avatarUrl?: string | null;
+  avatarInitials?: string | null;
   disabledAt?: Date | null;
   lastLoginAt?: Date | null;
   save: () => Promise<unknown>;
@@ -240,7 +242,7 @@ export async function getSession(req: Request) {
   if (!session) return null;
   session.lastSeenAt = new Date();
   await session.save();
-  const user = session.userId as unknown as { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; disabledAt?: Date };
+  const user = session.userId as unknown as { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; disabledAt?: Date };
   if (user.disabledAt) return null;
   return { session, user: getPublicUser(user) };
 }
@@ -274,6 +276,8 @@ export async function createAppToken(req: Request, appId: string) {
       name: current.user.name,
       role: appRole,
       permissions: current.user.permissions,
+      avatarUrl: current.user.avatarUrl,
+      avatarInitials: current.user.avatarInitials,
       sid: String(current.session._id)
     }),
     user: current.user
@@ -285,6 +289,21 @@ export async function recordUsage(req: Request, input: { platform?: string; dura
   if (!current) return null;
   await recordActivity(current.user.id, input.platform ?? 'sk-central', input.type ?? 'active_time', Math.max(0, Number(input.durationSeconds ?? 0)));
   return { recorded: true };
+}
+
+export async function updateIdentityProfile(req: Request, input: { name?: string; avatarUrl?: string | null; avatarInitials?: string | null }) {
+  const current = await getSession(req);
+  if (!current) return null;
+  const user = await IdentityUserModel.findById(current.user.id);
+  if (!user) return null;
+
+  const nextName = typeof input.name === 'string' ? input.name.trim().slice(0, 80) : '';
+  if (nextName.length >= 2) user.name = nextName;
+  if (typeof input.avatarInitials === 'string') user.avatarInitials = input.avatarInitials.trim().replace(/[^a-z0-9]/gi, '').slice(0, 3).toUpperCase();
+  if (typeof input.avatarUrl === 'string') user.avatarUrl = input.avatarUrl.length <= 250_000 ? input.avatarUrl : '';
+
+  await user.save();
+  return getPublicUser(user);
 }
 
 export async function getIdentityAnalytics(req: Request) {
@@ -336,22 +355,26 @@ export async function revokeUser(req: Request, input: { userId: string }) {
 export async function getRememberedIdentityRecords(input: { emails?: string[] }) {
   const emails = [...new Set((input.emails ?? []).map(normalizeEmail).filter(Boolean))];
   if (!emails.length) return [];
-  const users = await IdentityUserModel.find({ email: { $in: emails }, disabledAt: { $exists: false } }).select('_id email name role permissions').lean();
+  const users = await IdentityUserModel.find({ email: { $in: emails }, disabledAt: { $exists: false } }).select('_id email name role permissions avatarUrl avatarInitials').lean();
   return users.map((user) => ({
     id: String(user._id),
     email: user.email,
     name: user.name,
     role: user.role,
-    permissions: user.permissions ?? []
+    permissions: user.permissions ?? [],
+    avatarUrl: user.avatarUrl ?? '',
+    avatarInitials: user.avatarInitials ?? ''
   }));
 }
 
-export function getPublicUser(user: { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[] }) {
+export function getPublicUser(user: { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null }) {
   return {
     id: String(user._id),
     email: user.email,
     name: user.name,
     role: user.role === 'student' ? 'user' : user.role,
-    permissions: user.permissions ?? []
+    permissions: user.permissions ?? [],
+    avatarUrl: user.avatarUrl ?? '',
+    avatarInitials: user.avatarInitials ?? ''
   };
 }

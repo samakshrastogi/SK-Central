@@ -11,6 +11,8 @@ export interface AppTokenPayload {
   name: string;
   role: 'user' | 'student' | 'admin';
   permissions: string[];
+  avatarUrl?: string;
+  avatarInitials?: string;
   sid: string;
   iat: number;
   exp: number;

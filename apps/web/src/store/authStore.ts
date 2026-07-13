@@ -8,12 +8,14 @@ export interface CentralUser {
   role: 'user' | 'admin';
   permissions: string[];
   avatarUrl?: string;
+  avatarInitials?: string;
 }
 
 export interface RememberedIdentity {
   email: string;
   name: string;
   avatarUrl?: string;
+  avatarInitials?: string;
 }
 
 const rememberedKey = 'sk-central-remembered-identities';
@@ -38,9 +40,9 @@ export const getRememberedIdentities = (): RememberedIdentity[] => {
   }
 };
 
-export const rememberIdentity = (user: Pick<CentralUser, 'email' | 'name' | 'avatarUrl'>) => {
+export const rememberIdentity = (user: Pick<CentralUser, 'email' | 'name' | 'avatarUrl' | 'avatarInitials'>) => {
   if (!canUseStorage()) return;
-  const identity = { email: user.email, name: user.name, avatarUrl: user.avatarUrl };
+  const identity = { email: user.email, name: user.name, avatarUrl: user.avatarUrl, avatarInitials: user.avatarInitials };
   const next = [identity, ...getRememberedIdentities().filter((item) => item.email !== user.email)].slice(0, 6);
   window.localStorage.setItem(rememberedKey, JSON.stringify(next));
 };
@@ -53,7 +55,8 @@ export const validateRememberedIdentities = async () => {
     const valid = (response.data.data as RememberedIdentity[]).map((identity) => ({
       email: identity.email,
       name: identity.name,
-      avatarUrl: identity.avatarUrl
+      avatarUrl: identity.avatarUrl,
+      avatarInitials: identity.avatarInitials
     }));
     window.localStorage.setItem(rememberedKey, JSON.stringify(valid));
     return valid;

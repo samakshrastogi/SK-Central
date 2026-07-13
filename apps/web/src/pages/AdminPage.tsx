@@ -10,7 +10,6 @@ interface ApplicationForm {
   description: string;
   liveLink: string;
   category: string;
-  version: string;
   status: ProjectStatus;
   technologies: string;
 }
@@ -36,7 +35,6 @@ const defaultForm: ApplicationForm = {
   description: '',
   liveLink: 'https://example.com',
   category: 'Application',
-  version: '1.0.0',
   status: 'Preview',
   technologies: ''
 };
@@ -105,7 +103,7 @@ export default function AdminPage() {
       description: values.description,
       longDescription: values.description,
       status: values.status,
-      version: values.version,
+      version: existing?.version ?? '1.0.0',
       technologies: values.technologies.split(',').map((item) => item.trim()).filter(Boolean),
       gradient: 'from-cyan-300/50 via-amber-200/50 to-rose-300/50',
       logo: values.name.slice(0, 2).toUpperCase(),
@@ -133,7 +131,6 @@ export default function AdminPage() {
       name: application.name,
       category: application.category,
       liveLink: application.liveLink,
-      version: application.version,
       status: application.status,
       technologies: application.technologies.join(', '),
       description: application.description
@@ -196,7 +193,6 @@ export default function AdminPage() {
                 <tr>
                   <th className="px-3 py-2">Application</th>
                   <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Version</th>
                   <th className="px-3 py-2">Link</th>
                   <th className="px-3 py-2 text-right">Actions</th>
                 </tr>
@@ -209,7 +205,6 @@ export default function AdminPage() {
                       <span className="block max-w-sm truncate text-xs font-semibold text-slate-500">{application.technologies.join(' + ')}</span>
                     </td>
                     <td className="px-3 py-2"><span className="rounded-full bg-cyan-100 px-2 py-1 text-[0.68rem] font-black text-cyan-700">{application.status}</span></td>
-                    <td className="px-3 py-2 font-bold text-slate-600">{application.version}</td>
                     <td className="px-3 py-2"><a href={application.liveLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-black text-cyan-700">Open <ExternalLink size={12} /></a></td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-2">
@@ -219,7 +214,7 @@ export default function AdminPage() {
                     </td>
                   </tr>
                 ))}
-                {!filteredApplications.length ? <tr><td colSpan={5} className="px-3 py-6 text-sm font-bold text-slate-500">No applications match this search.</td></tr> : null}
+                {!filteredApplications.length ? <tr><td colSpan={4} className="px-3 py-6 text-sm font-bold text-slate-500">No applications match this search.</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -254,10 +249,9 @@ export default function AdminPage() {
             <div className="grid gap-3 lg:grid-cols-[1fr_0.95fr]">
               <div className="grid gap-2 sm:grid-cols-2">
                 <input {...register('name', { required: true })} placeholder="Application name" className="rounded-2xl border-slate-200 text-sm" />
-                <input {...register('category', { required: true })} placeholder="Category" className="rounded-2xl border-slate-200 text-sm" />
+                <select {...register('category', { required: true })} className="rounded-2xl border-slate-200 text-sm">{['Website', 'Application', 'Dashboard', 'Other'].map((category) => <option key={category}>{category}</option>)}</select>
                 <input {...register('liveLink', { required: true })} placeholder="Live link" className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
-                <input {...register('version', { required: true })} placeholder="Version" className="rounded-2xl border-slate-200 text-sm" />
-                <select {...register('status')} className="rounded-2xl border-slate-200 text-sm">{['Live', 'Beta', 'Preview', 'Planned'].map((status) => <option key={status}>{status}</option>)}</select>
+                <select {...register('status')} className="rounded-2xl border-slate-200 text-sm">{['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance'].map((status) => <option key={status}>{status}</option>)}</select>
                 <input {...register('technologies')} placeholder="React, Node, MongoDB" className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
                 <textarea {...register('description', { required: true })} placeholder="Description" rows={4} className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white/70 p-3 text-xs font-black text-slate-600 sm:col-span-2">

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/services/api';
+import { useAuthStore } from '@/store/authStore';
 import type { ApplicationDocumentation, ManagedApplication, ProjectStatus } from '@/types';
 
 type ApiProject = {
@@ -154,10 +155,25 @@ export const useApplicationStore = create<ApplicationStore>()(
         await api.delete(`/projects/${application.slug}`);
         set((state) => ({ applications: state.applications.filter((item) => item.id !== id) }));
       },
-      updateProfile: (profile) =>
+      updateProfile: (profile) => {
         set((state) => ({
           profile: { ...state.profile, ...profile }
-        }))
+        }));
+        const current = get().profile;
+        const payload: { name?: string; avatarInitials?: string; avatarUrl?: string } = {};
+        if (typeof profile.name === 'string') payload.name = profile.name;
+        if (typeof profile.avatar === 'string') payload.avatarInitials = profile.avatar;
+        if (typeof profile.avatarUrl === 'string') payload.avatarUrl = profile.avatarUrl;
+        if (Object.keys(payload).length) {
+          void api.patch('/auth/profile', payload).then((response) => {
+            const user = response.data.data.user;
+            if (user) {
+              useAuthStore.setState({ user });
+              set((state) => ({ profile: { ...state.profile, name: user.name ?? current.name, avatar: user.avatarInitials ?? current.avatar, avatarUrl: user.avatarUrl ?? current.avatarUrl } }));
+            }
+          }).catch(() => undefined);
+        }
+      }
     }),
     {
       name: 'sk-central-applications',

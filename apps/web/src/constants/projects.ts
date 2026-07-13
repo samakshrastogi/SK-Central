@@ -30,7 +30,7 @@ export const projects: Project[] = [
     description: 'Short-form knowledge videos with uploads, subscriptions, and creator analytics.',
     longDescription:
       'SK Flips centralizes short educational video publishing, watch-time analytics, creator tools, moderation, and storage visibility.',
-    status: 'Beta',
+    status: 'Testing',
     version: '1.4.2',
     technologies: ['React', 'Express', 'Multer', 'Socket.IO'],
     gradient: 'from-rose-400/30 via-orange-400/20 to-amber-300/20',

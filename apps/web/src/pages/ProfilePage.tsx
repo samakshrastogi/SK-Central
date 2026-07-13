@@ -24,8 +24,19 @@ export default function ProfilePage() {
     return () => ctx.revert();
   }, [section]);
 
+  useEffect(() => {
+    if (!user) return;
+    updateProfile({
+      name: profile.name || user.name,
+      email: user.email,
+      avatar: profile.avatar || user.avatarInitials || '',
+      avatarUrl: profile.avatarUrl || user.avatarUrl || ''
+    });
+  }, [user?.id]);
+
   const onInput = (key: keyof typeof profile) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    updateProfile({ [key]: event.target.value });
+    const value = event.target.value;
+    updateProfile(key === 'avatar' ? { avatar: value, avatarUrl: '' } : { [key]: value });
   };
 
   const signOut = async () => {

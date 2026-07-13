@@ -14,6 +14,8 @@ export const IdentityUserModel = model(
       passwordSalt: { type: String, required: true },
       role: { type: String, enum: ['user', 'admin', 'student'], default: 'user' },
       permissions: [{ type: String }],
+      avatarUrl: String,
+      avatarInitials: String,
       emailVerifiedAt: Date,
       lastLoginAt: Date,
       disabledAt: Date

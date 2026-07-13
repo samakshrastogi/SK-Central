@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { createAppToken, forgotPassword, getIdentityAnalytics, getRememberedIdentityRecords, getSession, listSessions, loginWithPassword, logout, recordUsage, registerIdentity, resendVerificationOtp, resetPassword, revokeUser, setUserRole, verifyIdentityEmail } from '@/services/auth.service.js';
+import { createAppToken, forgotPassword, getIdentityAnalytics, getRememberedIdentityRecords, getSession, listSessions, loginWithPassword, logout, recordUsage, registerIdentity, resendVerificationOtp, resetPassword, revokeUser, setUserRole, updateIdentityProfile, verifyIdentityEmail } from '@/services/auth.service.js';
 import { verifySignedToken } from '@/services/token.service.js';
 import { ok } from '@/utils/apiResponse.js';
 
@@ -79,6 +79,15 @@ export const rememberedIdentities: RequestHandler = async (req, res, next) => {
 export const refresh: RequestHandler = async (req, res) => {
   const current = await requireCurrentSession(req);
   ok(res, { user: current.user }, 'Session refreshed');
+};
+
+export const updateProfile: RequestHandler = async (req, res, next) => {
+  try {
+    await requireCurrentSession(req);
+    ok(res, { user: await updateIdentityProfile(req, req.body) }, 'Profile updated');
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const appToken: RequestHandler = async (req, res) => {
