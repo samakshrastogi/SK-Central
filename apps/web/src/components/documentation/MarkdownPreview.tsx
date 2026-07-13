@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Share2, X } from 'lucide-react';
 import './MarkdownPreview.css';
 
 type MarkdownPreviewProps = {
   content: string;
+  platformName?: string;
 };
 
 const escapeHtml = (value: string) =>
@@ -31,7 +32,7 @@ const inlineMarkdown = (value: string) =>
       return `<a href="${href}"${target}>${label}</a>`;
     });
 
-const renderFlowchart = (content: string) => `<div class="markdown-flowchart" role="img" aria-label="Flowchart"><div class="mermaid">${escapeHtml(content)}</div></div>`;
+const renderFlowchart = (content: string) => `<div class="markdown-flowchart" role="img" aria-label="Flowchart"><div class="mermaid-source">${escapeHtml(content)}</div></div>`;
 
 const isFlowchartBlock = (content: string) => {
   const firstLine = content.trimStart().split('\n')[0]?.trim().toLowerCase() ?? '';
@@ -190,16 +191,17 @@ const renderMarkdown = (content: string) => {
   return html.join('');
 };
 
-export function MarkdownPreview({ content }: MarkdownPreviewProps) {
+export function MarkdownPreview({ content, platformName = 'SK platform' }: MarkdownPreviewProps) {
   const html = useMemo(() => renderMarkdown(content), [content]);
   const rootRef = useRef<HTMLElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const hasFlowchart = useMemo(() => /```(?:mermaid)?\s*(?:flowchart|graph)/i.test(content), [content]);
+  const [shareStatus, setShareStatus] = useState('');
+  const hasFlowchart = useMemo(() => html.includes('mermaid-source'), [html]);
 
   useEffect(() => {
     if (!rootRef.current || !hasFlowchart) return;
     let cancelled = false;
-    void import('mermaid').then(({ default: mermaid }) => {
+    void import('mermaid').then(async ({ default: mermaid }) => {
       if (cancelled || !rootRef.current) return;
       mermaid.initialize({
         startOnLoad: false,
@@ -208,16 +210,54 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
         flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true },
         themeVariables: { primaryColor: '#eeecff', primaryBorderColor: '#8b5cf6', primaryTextColor: '#111827', lineColor: '#374151', fontFamily: 'ui-sans-serif, system-ui, sans-serif', fontSize: '17px' }
       });
-      void mermaid.run({ nodes: rootRef.current.querySelectorAll<HTMLElement>('.mermaid'), suppressErrors: true });
+      const nodes = [...rootRef.current.querySelectorAll<HTMLElement>('.mermaid-source')];
+      await Promise.all(nodes.map(async (node, index) => {
+        const source = (node.textContent ?? '').replace(/→/g, '-->');
+        try {
+          const { svg } = await mermaid.render(`sk-flow-${Date.now()}-${index}`, source);
+          if (!cancelled) node.innerHTML = svg;
+        } catch {
+          if (!cancelled) node.innerHTML = '<p class="markdown-flowchart-error">This flowchart could not be rendered. Check the Mermaid syntax in this Markdown file.</p>';
+        }
+      }));
     });
     return () => { cancelled = true; };
   }, [hasFlowchart, html]);
 
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [expanded]);
+
+  const shareDocumentation = async () => {
+    const shareData = {
+      title: `${platformName} documentation`,
+      text: `Explore ${platformName} on the SK ecosystem—shared securely from SK Central.`,
+      url: window.location.href
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setShareStatus('Shared');
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        setShareStatus('Link copied');
+      }
+      window.setTimeout(() => setShareStatus(''), 2200);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setShareStatus('Unable to share');
+    }
+  };
+
   return (
     <div className={expanded ? 'markdown-preview-expanded' : undefined}>
       {hasFlowchart ? <div className="markdown-preview-tools">
-        <button type="button" onClick={() => void navigator.clipboard.writeText(content)} title="Copy Markdown"><Copy size={16} /></button>
-        <button type="button" onClick={() => setExpanded((value) => !value)} title={expanded ? 'Exit expanded preview' : 'Expand preview'}>{expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
+        {shareStatus ? <span role="status">{shareStatus}</span> : null}
+        <button type="button" onClick={() => void shareDocumentation()} title="Share documentation"><Share2 size={16} /></button>
+        <button type="button" onClick={() => setExpanded((value) => !value)} title={expanded ? 'Close expanded preview' : 'Expand preview'}>{expanded ? <X size={18} /> : <Maximize2 size={16} />}</button>
       </div> : null}
       <article ref={rootRef} className="markdown-preview" dangerouslySetInnerHTML={{ __html: html }} />
     </div>

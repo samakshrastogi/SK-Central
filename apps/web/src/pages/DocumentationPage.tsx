@@ -11,7 +11,6 @@ export default function DocumentationPage() {
   const [activeSlug, setActiveSlug] = useState(initial);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [readingProgress, setReadingProgress] = useState(0);
   const activeApp = applications.find((app) => app.slug === activeSlug) ?? applications[0];
   const activeDoc = activeApp?.docs.find((doc) => doc.id === activeDocId) ?? activeApp?.docs[0];
   const filtered = useMemo(() => {
@@ -56,40 +55,14 @@ export default function DocumentationPage() {
       </aside>
 
       <section className="glass flex h-[calc(100vh-7rem)] flex-col rounded-[1.5rem] p-3">
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-900/10 pb-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Documentation</p>
-            <h1 className="mt-1 text-2xl font-black text-slate-950">{activeApp?.name ?? 'No documentation yet'}</h1>
-            <p className="mt-1 max-w-5xl text-sm leading-6 text-slate-600">
-              {activeApp?.longDescription ?? 'Documentation appears here after an admin adds an application with uploaded docs.'}
-            </p>
-          </div>
-          {activeApp ? <a href={activeApp.liveLink} target="_blank" rel="noreferrer" className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white">
-            Launch
-          </a> : null}
-        </header>
-
-        {activeApp && activeApp.docs.length > 1 ? <div className="mt-3 flex flex-wrap gap-2">
-          {activeApp.docs.map((doc) => (
-            <button key={doc.id} type="button" onClick={() => { setActiveDocId(doc.id); setReadingProgress(0); }} aria-label={`Open ${doc.name}`} className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${activeDoc?.id === doc.id ? 'bg-slate-900 text-white' : 'bg-white/75 text-slate-700 hover:bg-slate-100'}`}>
-              <FileText size={14} /> {doc.name}
-            </button>
-          ))}
-        </div> : null}
-
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-4 py-2">
-          <span className="inline-flex min-w-0 items-center gap-2 text-xs font-black text-slate-600"><FileText size={15} className="text-cyan-700" /><span className="truncate">{activeDoc?.name ?? 'Select a document'}</span></span>
-          <span className="text-xs font-black text-cyan-700">{readingProgress}% read</span>
-        </div>
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-gradient-to-r from-cyan-500 to-teal-400 transition-all" style={{ width: `${readingProgress}%` }} /></div>
-        <article onScroll={(event) => { const node = event.currentTarget; const max = node.scrollHeight - node.clientHeight; setReadingProgress(max > 0 ? Math.round((node.scrollTop / max) * 100) : 100); }} className="mt-2 min-h-0 flex-1 overflow-y-auto scroll-smooth rounded-[1.4rem] border border-slate-900/10 bg-white/82 p-4 shadow-sm">
+        <article className="min-h-0 flex-1 overflow-y-auto scroll-smooth rounded-[1.4rem] border border-slate-900/10 bg-white/82 p-4 shadow-sm">
           {!activeDoc ? (
             <div className="rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
               <strong className="block text-slate-950">No document selected.</strong>
               Add Markdown, PDF, or DOCX documentation from the admin page.
             </div>
           ) : activeDoc.type === 'md' ? (
-            <MarkdownPreview content={activeDoc.content ?? ''} />
+            <MarkdownPreview content={activeDoc.content ?? ''} platformName={activeApp.name} />
           ) : activeDoc.type === 'pdf' && activeDoc.url ? (
             <iframe title={activeDoc.name} src={activeDoc.url} className="h-[620px] w-full rounded-2xl border border-slate-900/10 bg-white" />
           ) : (
