@@ -16,7 +16,7 @@ const withHostnameAlias = (origin: string) => {
 };
 
 const configuredOrigins = [env.CLIENT_ORIGIN, ...env.ALLOWED_ORIGINS.split(',')].map(normalizeOrigin).filter(Boolean);
-const platformOrigins = ['https://sk-hub.in', 'https://www.sk-hub.in', 'https://quiz.sk-hub.in', 'https://www.quiz.sk-hub.in', 'https://mailpilot.sk-hub.in', 'https://www.mailpilot.sk-hub.in'];
+const platformOrigins = ['https://sk-hub.in', 'https://www.sk-hub.in', 'https://quiz.sk-hub.in', 'https://www.quiz.sk-hub.in', 'https://mailpilot.sk-hub.in', 'https://www.mailpilot.sk-hub.in', 'https://chat.sk-hub.in', 'https://www.chat.sk-hub.in', 'https://mediaflow.sk-hub.in', 'https://www.mediaflow.sk-hub.in'];
 
 export const allowedOrigins = [...new Set([...configuredOrigins.flatMap(withHostnameAlias), ...platformOrigins])];
 export const isAllowedOrigin = (origin?: string) => !origin || allowedOrigins.includes(normalizeOrigin(origin));
