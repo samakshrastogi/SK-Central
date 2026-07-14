@@ -14,6 +14,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().default('development-only'),
   SSO_TOKEN_SECRET: z.string().default('sk-central-local-sso-secret-change-in-production'),
   SSO_COOKIE_NAME: z.string().default('sk_central_sid'),
+  SSO_COOKIE_DOMAIN: z.string().optional(),
   SSO_SESSION_DAYS: z.coerce.number().default(3650),
   SSO_APP_TOKEN_MINUTES: z.coerce.number().default(10),
   MAIL_FROM: z.string().default('SK Central <hello@sk-hub.in>'),

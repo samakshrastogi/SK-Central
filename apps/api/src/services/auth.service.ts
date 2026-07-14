@@ -18,11 +18,18 @@ type IdentityUserDocument = {
   save: () => Promise<unknown>;
 };
 
-const cookieOptions = () => ({
+const sharedCookieDomain = env.SSO_COOKIE_DOMAIN ?? (env.NODE_ENV === 'production' ? '.sk-hub.in' : undefined);
+const sharedCookieName = `${env.SSO_COOKIE_NAME}_shared`;
+
+const cookieBaseOptions = () => ({
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
   sameSite: env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
-  path: '/',
+  path: '/'
+});
+
+const cookieOptions = () => ({
+  ...cookieBaseOptions(),
   maxAge: env.SSO_SESSION_DAYS * 24 * 60 * 60 * 1000
 });
 
@@ -114,6 +121,7 @@ async function establishSession(user: IdentityUserDocument | null, req: Request,
     await recordActivity(user._id, 'sk-central', 'login', 0, { userAgent: req.headers['user-agent'], ipAddress: req.ip });
   }
   res.cookie(env.SSO_COOKIE_NAME, rawSession, cookieOptions());
+  if (sharedCookieDomain) res.cookie(sharedCookieName, rawSession, { ...cookieOptions(), domain: sharedCookieDomain });
   return getPublicUser(user);
 }
 
@@ -232,7 +240,7 @@ export async function resetPassword(input: { email: string; otp: string; passwor
 }
 
 export async function getSession(req: Request) {
-  const rawSession = getCookie(req, env.SSO_COOKIE_NAME);
+  const rawSession = getCookie(req, env.SSO_COOKIE_NAME) ?? getCookie(req, sharedCookieName);
   if (!rawSession) return null;
   const session = await IdentitySessionModel.findOne({
     sessionHash: hashToken(rawSession),
@@ -254,7 +262,8 @@ export async function logout(req: Request, res: Response, global = false) {
     else current.session.revokedAt = new Date();
     await current.session.save();
   }
-  res.clearCookie(env.SSO_COOKIE_NAME, { httpOnly: true, secure: env.NODE_ENV === 'production', sameSite: env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const), path: '/' });
+  res.clearCookie(env.SSO_COOKIE_NAME, cookieBaseOptions());
+  if (sharedCookieDomain) res.clearCookie(sharedCookieName, { ...cookieBaseOptions(), domain: sharedCookieDomain });
 }
 
 export async function listSessions(req: Request) {
