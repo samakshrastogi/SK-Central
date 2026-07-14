@@ -1,4 +1,4 @@
-import { BadgeCheck, Bot, Image, Mic, Send, Sparkles, X } from 'lucide-react';
+import { BadgeCheck, Bot, Send, Sparkles, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,17 +7,17 @@ import { api } from '@/services/api';
 import { useUiStore } from '@/store/uiStore';
 
 const suggestedPrompts = [
-  'Summarize SK ecosystem health',
-  'Find documentation gaps',
-  'Explain SK Quiz user progress',
-  'Show API performance'
+  'Summarize live SK Central applications',
+  'List live applications by status',
+  'Which application was updated most recently?',
+  'What technologies do the applications use?'
 ];
 
 const initialMessages = [
   {
     role: 'assistant',
     content:
-      'Hi, I am the SK ecosystem assistant. I can help with SK Central, SK Quiz, connected applications, analytics, documentation, and platform health.'
+      'Hi, I am the SK Central assistant. I answer from the live public application catalog. Admin-only data is never available to me.'
   }
 ];
 
@@ -50,9 +50,7 @@ export function FloatingAssistant() {
         {
           role: 'assistant',
           content:
-            `Live SK ecosystem response is temporarily unavailable, so I am using the local dashboard fallback.
-
-I can still help you reason over SK Central, SK Quiz, documentation, analytics, application health, and admin workflows. If this keeps happening after deploy, check the SK Central API service health and confirm \`GEMINI_API_KEY\` is configured on the API environment.`
+            'Live SK Central application data is temporarily unavailable. Please try again shortly; I will not invent an answer without current catalog data.'
         }
       ]);
     }
@@ -63,7 +61,7 @@ I can still help you reason over SK Central, SK Quiz, documentation, analytics, 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-5 z-30 inline-flex h-13 w-13 items-center justify-center rounded-2xl bg-slate-950 p-4 text-white shadow-[0_20px_50px_rgba(15,23,42,0.22)] transition hover:scale-105 hover:bg-cyan-600"
+        className="fixed bottom-36 right-3 z-30 sm:bottom-20 sm:right-5 inline-flex h-13 w-13 items-center justify-center rounded-2xl bg-slate-950 p-4 text-white shadow-[0_20px_50px_rgba(15,23,42,0.22)] transition hover:scale-105 hover:bg-cyan-600"
         aria-label="Open AI assistant"
       >
         <Bot size={24} />
@@ -72,11 +70,11 @@ I can still help you reason over SK Central, SK Quiz, documentation, analytics, 
         href="https://www.linkedin.com/in/samaksh-rastogi-9638b9254/"
         target="_blank"
         rel="noreferrer"
-        className="group fixed bottom-8 right-5 z-30 inline-flex h-13 w-13 items-center justify-center overflow-hidden rounded-2xl bg-white p-4 text-slate-950 shadow-[0_20px_50px_rgba(15,23,42,0.16)] transition-all duration-300 hover:w-72 hover:justify-start hover:gap-3"
+        className="fixed bottom-20 right-3 z-30 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-slate-950 shadow-[0_20px_50px_rgba(15,23,42,0.16)] sm:bottom-4 sm:right-5"
         aria-label="Developed by Samaksh Rastogi on LinkedIn"
       >
         <BadgeCheck size={22} className="text-cyan-600" />
-        <span className="hidden whitespace-nowrap text-sm font-black group-hover:inline">Developed by Samaksh Rastogi</span>
+        <span className="whitespace-nowrap text-sm font-black">Developed by <span className="text-emerald-600 underline decoration-2 underline-offset-2">Samaksh Rastogi</span></span>
       </a>
       <AnimatePresence>
         {open ? (
@@ -102,7 +100,7 @@ I can still help you reason over SK Central, SK Quiz, documentation, analytics, 
                 </span>
                 <div>
                   <h2 className="font-bold text-slate-950">AI Assistant</h2>
-                  <p className="text-xs text-slate-500">Gemini scoped to SK ecosystem</p>
+                  <p className="text-xs text-slate-500">Live public SK Central data</p>
                 </div>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
@@ -142,19 +140,13 @@ I can still help you reason over SK Central, SK Quiz, documentation, analytics, 
             </div>
             <footer className="border-t border-slate-900/10 p-3">
               <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/75 p-2">
-                <button type="button" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100" aria-label="Upload image placeholder">
-                  <Image size={18} />
-                </button>
-                <button type="button" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100" aria-label="Voice input placeholder">
-                  <Mic size={18} />
-                </button>
                 <input
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') send();
                   }}
-                  placeholder="Ask about SK Central, SK Quiz, docs, analytics..."
+                  placeholder="Ask about live SK Central applications..."
                   className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-950 placeholder:text-slate-400 focus:ring-0"
                 />
                 <button type="button" onClick={() => void send()} className="rounded-xl bg-cyan-500 p-2 text-white" aria-label="Send message">

@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
+import { useNotificationStore } from '@/store/notificationStore';
 import type { ApplicationDocumentation, ManagedApplication, ProjectStatus } from '@/types';
 
 type ApiProject = {
   _id?: string;
   id?: string;
   slug: string;
+  position?: number;
   name: string;
   category: string;
   description: string;
@@ -37,7 +39,7 @@ const metricValue = (metrics: ApiProject['metrics'], key: keyof typeof emptyMetr
   return metrics[key] ?? emptyMetrics[key];
 };
 
-export const normalizeApplication = (project: ApiProject): ManagedApplication => {
+export const normalizeApplication = (project: ApiProject, fallbackPosition = 1): ManagedApplication => {
   const slug = project.slug || slugify(project.name);
   const docs = project.docs?.length
     ? project.docs
@@ -48,6 +50,7 @@ export const normalizeApplication = (project: ApiProject): ManagedApplication =>
   return {
     id: project.id ?? project._id ?? slug,
     slug,
+    position: project.position ?? fallbackPosition,
     name: project.name,
     category: project.category,
     description: project.description,
@@ -97,6 +100,7 @@ interface ApplicationStore {
 const toProjectPayload = (application: ManagedApplication) => ({
   name: application.name,
   slug: application.slug,
+  position: application.position,
   category: application.category,
   description: application.description,
   longDescription: application.longDescription,
@@ -132,22 +136,32 @@ export const useApplicationStore = create<ApplicationStore>()(
         set({ loading: true, error: null });
         try {
           const response = await api.get('/projects');
-          const data = Array.isArray(response.data.data) ? response.data.data : [];
-          set({ applications: data.map(normalizeApplication), loading: false });
+          const data: ApiProject[] = Array.isArray(response.data.data) ? response.data.data : [];
+          const applications = data
+            .map((project, index) => normalizeApplication(project, index + 1))
+            .sort((left, right) => left.position - right.position);
+          set({ applications, loading: false });
         } catch (error) {
           set({ error: error instanceof Error ? error.message : 'Failed to load applications', loading: false });
         }
       },
       addApplication: async (application) => {
         const response = await api.post('/projects', toProjectPayload(application));
-        set((state) => ({ applications: [normalizeApplication(response.data.data), ...state.applications] }));
+        set((state) => ({
+          applications: [...state.applications, normalizeApplication(response.data.data, application.position)]
+            .sort((left, right) => left.position - right.position)
+        }));
+        await useNotificationStore.getState().load();
       },
       updateApplication: async (application) => {
         const response = await api.put(`/projects/${application.slug}`, toProjectPayload(application));
         const updated = normalizeApplication(response.data.data);
         set((state) => ({
-          applications: state.applications.map((item) => (item.id === application.id || item.slug === application.slug ? updated : item))
+          applications: state.applications
+            .map((item) => (item.id === application.id || item.slug === application.slug ? updated : item))
+            .sort((left, right) => left.position - right.position)
         }));
+        await useNotificationStore.getState().load();
       },
       deleteApplication: async (id) => {
         const application = get().applications.find((item) => item.id === id);

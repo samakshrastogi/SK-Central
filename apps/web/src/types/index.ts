@@ -5,6 +5,7 @@ export type ProjectStatus = 'Planned' | 'In Progress' | 'Testing' | 'Preview' | 
 export interface Project {
   id: string;
   slug: string;
+  position?: number;
   name: string;
   category: string;
   description: string;
@@ -33,6 +34,7 @@ export interface ApplicationDocumentation {
 }
 
 export interface ManagedApplication extends Project {
+  position: number;
   liveLink: string;
   docs: ApplicationDocumentation[];
   analytics: {

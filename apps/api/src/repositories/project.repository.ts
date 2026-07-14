@@ -6,7 +6,7 @@ export class ProjectRepository {
     if (mongoose.connection.readyState !== 1) {
       return [];
     }
-    return ProjectModel.find().sort({ createdAt: -1 }).lean();
+    return ProjectModel.find().sort({ position: 1, createdAt: 1 }).lean();
   }
 
   async findBySlug(slug: string) {

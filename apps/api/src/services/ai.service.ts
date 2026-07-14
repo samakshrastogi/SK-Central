@@ -1,7 +1,7 @@
 import { env } from '@/config/env.js';
-import { demoProjects } from '@/constants/demoData.js';
+import { ProjectModel } from '@/models/project.model.js';
 
-interface GeminiResponse {
+interface ProviderResponse {
   candidates?: Array<{
     content?: {
       parts?: Array<{ text?: string }>;
@@ -9,87 +9,99 @@ interface GeminiResponse {
   }>;
 }
 
-const geminiModels = () => [...new Set([env.GEMINI_MODEL, 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-latest'].filter(Boolean))];
+const providerModels = () => [...new Set([env.GEMINI_MODEL, 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-latest'].filter(Boolean))];
+const adminOnlyRequest = /\b(admin|administrator|audit(?:\s+log)?|activity\s+log|user\s+list|user\s+email|role|permission|session|credential|secret|token|otp|database|environment\s+variable)\b/i;
 
 export class AIService {
   async respond(prompt: string) {
-    const context = demoProjects
-      .map((project) => `${project.name}: ${project.description}. Category: ${project.category}. Status: ${project.status}. Tech: ${project.technologies.join(', ')}`)
-      .join('\n');
+    if (adminOnlyRequest.test(prompt)) {
+      return {
+        role: 'assistant',
+        content: 'I cannot access or discuss SK Central admin-only data, including users, roles, sessions, audit logs, credentials, or private configuration. I can answer questions about the public application catalog and its published details.',
+        model: 'policy',
+        tokenUsage: Math.max(24, prompt.length)
+      };
+    }
 
-    const ecosystemContext = [
-      'SK Central: identity, managed applications, documentation, analytics, admin roles, activity logs, profile, and ecosystem support.',
-      'SK Quiz Coach: adaptive exam prep, onboarding, study planning, quizzes, mentor chat, learner dashboard, and progress analytics.',
-      'SK Auth: shared identity, email OTP, remembered accounts, profile avatar, single sign-on, and global logout/session checks.',
-      context
-    ].join('\n');
+    const projects = await ProjectModel.find()
+      .select('name slug position category description longDescription technologies status version launchUrl features roadmap updatedAt')
+      .sort({ position: 1, createdAt: 1 })
+      .lean()
+      .catch(() => []);
 
-    const scopedFallback = {
-      role: 'assistant',
-      content:
-        `I can help with SK Central, SK Quiz, SK Auth, connected applications, analytics, and documentation.\n\nAvailable SK ecosystem context:\n${ecosystemContext}\n\nYour question: ${prompt}\n\nAdd GEMINI_API_KEY in apps/api/.env to enable live Gemini responses.`,
-      model: 'local-fallback',
-      tokenUsage: Math.max(24, prompt.length)
-    };
+    const publicContext = projects.map((project) => ({
+      name: project.name,
+      slug: project.slug,
+      position: project.position,
+      category: project.category,
+      description: project.description,
+      longDescription: project.longDescription,
+      technologies: project.technologies,
+      status: project.status,
+      version: project.version,
+      launchUrl: project.launchUrl,
+      features: project.features,
+      roadmap: project.roadmap,
+      updatedAt: project.updatedAt
+    }));
+
+    if (!publicContext.length) {
+      return {
+        role: 'assistant',
+        content: 'SK Central does not currently have live public application data available for this question. I will not invent an answer.',
+        model: 'live-data-unavailable',
+        tokenUsage: Math.max(24, prompt.length)
+      };
+    }
+
+    const contextText = JSON.stringify({
+      fetchedAt: new Date().toISOString(),
+      applicationCount: publicContext.length,
+      applications: publicContext
+    });
+    const fallbackContent = `I found ${publicContext.length} applications in the live SK Central catalog:\n\n${publicContext
+      .map((project) => `- **${project.name}** (${project.status}): ${project.description}`)
+      .join('\n')}\n\nAsk about a specific application for details available in this catalog.`;
 
     if (!env.GEMINI_API_KEY) {
-      return scopedFallback;
+      return {
+        role: 'assistant',
+        content: fallbackContent,
+        model: 'live-catalog',
+        tokenUsage: Math.max(24, prompt.length)
+      };
     }
 
     const systemInstruction =
-      'You are the SK ecosystem AI Assistant. Answer using SK Central, SK Quiz Coach, SK Auth, managed application, analytics, documentation, and admin workflow context. If a user asks unrelated questions, politely redirect to SK ecosystem support.';
+      'You are the SK Central public catalog assistant. Answer only from the live public application context provided with this request. Never expose or infer admin pages, users, email lists, roles, permissions, sessions, audit logs, credentials, secrets, tokens, private configuration, or database details. If the answer is not present in the context, say that SK Central does not have that information available. Keep answers concise and identify that the information comes from the live SK Central catalog.';
 
-    let lastStatus = 0;
-    let lastModel = env.GEMINI_MODEL;
-
-    for (const model of geminiModels()) {
-      lastModel = model;
+    for (const model of providerModels()) {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstruction }]
-            },
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    text: `SK ecosystem context:\n${ecosystemContext}\n\nUser question:\n${prompt}`
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.35,
-              maxOutputTokens: 900
-            }
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: 'user', parts: [{ text: `Live SK Central public context:\n${contextText}\n\nUser question:\n${prompt}` }] }],
+            generationConfig: { temperature: 0.15, maxOutputTokens: 700 }
           })
         }
       );
 
-      lastStatus = response.status;
       if (!response.ok) continue;
-
-      const data = (await response.json()) as GeminiResponse;
-      const content =
-        data.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join('\n') ??
-        scopedFallback.content;
-
-      return {
-        role: 'assistant',
-        content,
-        model,
-        tokenUsage: Math.max(24, prompt.length)
-      };
+      const data = (await response.json()) as ProviderResponse;
+      const content = data.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join('\n');
+      if (content) {
+        return { role: 'assistant', content, model: 'sk-central-ai', tokenUsage: Math.max(24, prompt.length) };
+      }
     }
 
     return {
-      ...scopedFallback,
-      content: `Gemini returned ${lastStatus} for ${lastModel}. I am using the local SK ecosystem context fallback.\n\n${scopedFallback.content}`
+      role: 'assistant',
+      content: fallbackContent,
+      model: 'live-catalog',
+      tokenUsage: Math.max(24, prompt.length)
     };
   }
 }

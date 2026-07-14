@@ -4,6 +4,7 @@ const projectSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, index: true },
+    position: { type: Number, min: 1, default: 1, index: true },
     category: { type: String, required: true },
     description: { type: String, required: true },
     longDescription: { type: String },

@@ -13,6 +13,7 @@ const documentationSchema = z.object({
 export const createProjectSchema = z.object({
   name: z.string().trim().min(2, 'Application name must contain at least 2 characters.'),
   slug: z.string().trim().min(2, 'Application slug must contain at least 2 characters.').regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Application slug must use lowercase letters, numbers, and hyphens.'),
+  position: z.coerce.number().int().min(1, 'Position must be 1 or greater.').default(1),
   category: z.string().trim().min(2, 'Category must contain at least 2 characters.'),
   description: z.string().trim().min(8, 'Description must contain at least 8 characters.'),
   longDescription: z.string().optional(),

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { api } from '@/services/api';
-import { notifications as fallbackNotifications } from '@/constants/projects';
 import type { NotificationItem } from '@/types';
 
 interface NotificationState {
@@ -24,17 +23,17 @@ const normalize = (item: Partial<NotificationItem>, index: number): Notification
 });
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
-  items: fallbackNotifications,
+  items: [],
   load: async () => {
     try {
       const response = await api.get('/notifications');
       set({ items: (response.data.data as Partial<NotificationItem>[]).map(normalize) });
     } catch {
-      set({ items: fallbackNotifications });
+      set({ items: [] });
     }
   },
   markAllRead: async () => {
-    await api.patch('/notifications/read-all').catch(() => undefined);
+    await api.patch('/notifications/read-all');
     set({ items: get().items.map((item) => ({ ...item, unread: false })) });
   }
 }));

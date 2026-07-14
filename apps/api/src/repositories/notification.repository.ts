@@ -6,6 +6,9 @@ export class NotificationRepository {
   }
 
   async markAllRead(userId: string) {
-    return NotificationModel.updateMany({ userId }, { unread: false });
+    return NotificationModel.updateMany(
+      { $or: [{ userId }, { userId: { $exists: false } }] },
+      { $addToSet: { readBy: userId } }
+    );
   }
 }

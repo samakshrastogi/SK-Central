@@ -1,4 +1,4 @@
-import type { ActivityItem, NotificationItem, Project } from '@/types';
+import type { ActivityItem, Project } from '@/types';
 
 export const projects: Project[] = [
   {
@@ -187,41 +187,6 @@ export const projects: Project[] = [
 ];
 
 export const futureProjects = ['SK Cloud Deploy', 'SK Docs AI', 'SK Identity', 'SK Billing', 'SK Data Studio'];
-
-export const notifications: NotificationItem[] = [
-  {
-    id: 'n1',
-    title: 'SK Quiz Coach 2.8 released',
-    description: 'Adaptive review sets and leaderboard exports are now live.',
-    group: 'Launches',
-    unread: true,
-    createdAt: '5 min ago'
-  },
-  {
-    id: 'n2',
-    title: 'Infrastructure watch',
-    description: 'API latency remains below the target threshold.',
-    group: 'System',
-    unread: true,
-    createdAt: '18 min ago'
-  },
-  {
-    id: 'n3',
-    title: 'Community moderation queue',
-    description: 'Seven reports are waiting for administrator review.',
-    group: 'Community',
-    unread: false,
-    createdAt: '1 h ago'
-  },
-  {
-    id: 'n4',
-    title: 'AI assistant usage',
-    description: 'Token usage is trending 12% below budget this week.',
-    group: 'AI',
-    unread: false,
-    createdAt: '3 h ago'
-  }
-];
 
 export const activities: ActivityItem[] = [
   {

@@ -5,8 +5,22 @@ import { ok, created } from '@/utils/apiResponse.js';
 import { createProjectSchema } from '@/validators/project.validator.js';
 import { getSession } from '@/services/auth.service.js';
 import { IdentityAuditLogModel } from '@/models/identity.model.js';
+import { NotificationModel } from '@/models/notification.model.js';
 
 const service = new ProjectService();
+
+const notifyProjectChange = async (action: 'created' | 'updated', project: Record<string, unknown>) => {
+  const name = String(project.name ?? project.slug ?? 'Application');
+  await NotificationModel.create({
+    title: action === 'created' ? `${name} added` : `${name} updated`,
+    description: action === 'created'
+      ? `${name} is now available in the SK Central application gallery.`
+      : `${name} application information was updated in SK Central.`,
+    group: 'Launches',
+    readBy: [],
+    metadata: { targetUrl: '/admin', action, resourceType: 'application', resourceName: name }
+  });
+};
 
 const auditProjectChange = async (req: Request, action: string, project: Record<string, unknown>) => {
   const current = await getSession(req);
@@ -36,6 +50,7 @@ export const createProject: RequestHandler = async (req, res) => {
   const input = createProjectSchema.parse(req.body);
   const project = await service.createProject(input);
   await auditProjectChange(req, 'application_created', project as unknown as Record<string, unknown>);
+  await notifyProjectChange('created', project as unknown as Record<string, unknown>);
   created(res, project, 'Project created');
 };
 
@@ -48,6 +63,7 @@ export const updateProject: RequestHandler = async (req, res) => {
     return;
   }
   await auditProjectChange(req, 'application_updated', project as unknown as Record<string, unknown>);
+  await notifyProjectChange('updated', project as unknown as Record<string, unknown>);
   ok(res, project, 'Project updated');
 };
 

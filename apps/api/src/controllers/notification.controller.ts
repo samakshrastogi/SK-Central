@@ -1,34 +1,46 @@
 import type { RequestHandler } from 'express';
+import { NotificationModel } from '@/models/notification.model.js';
+import { getSession } from '@/services/auth.service.js';
 import { ok } from '@/utils/apiResponse.js';
 
-let readAllAt: Date | null = null;
+const visibleNotificationFilter = (userId: string) => ({
+  $or: [{ userId }, { userId: { $exists: false } }]
+});
 
-const liveNotifications = () => [
-  {
-    id: 'identity-analytics',
-    title: 'Identity analytics updated',
-    description: 'New user, login, visit, and active-time events are available.',
-    group: 'System',
-    unread: !readAllAt,
-    targetUrl: '/analytics',
-    createdAt: new Date().toLocaleString()
-  },
-  {
-    id: 'applications-admin',
-    title: 'Application controls ready',
-    description: 'Manage app links, documentation, previews, and user access from Admin.',
-    group: 'Launches',
-    unread: !readAllAt,
-    targetUrl: '/admin',
-    createdAt: new Date().toLocaleString()
+export const listNotifications: RequestHandler = async (req, res) => {
+  const current = await getSession(req);
+  if (!current) {
+    ok(res, []);
+    return;
   }
-];
 
-export const listNotifications: RequestHandler = (_req, res) => {
-  ok(res, liveNotifications());
+  const userId = current.user.id;
+  const notifications = await NotificationModel.find(visibleNotificationFilter(userId))
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .lean();
+
+  ok(res, notifications.map((notification) => ({
+    id: String(notification._id),
+    title: notification.title,
+    description: notification.description,
+    group: notification.group,
+    unread: !notification.readBy?.includes(userId),
+    targetUrl: typeof notification.metadata?.targetUrl === 'string' ? notification.metadata.targetUrl : '/admin',
+    createdAt: notification.createdAt.toLocaleString()
+  })));
 };
 
-export const markAllRead: RequestHandler = (_req, res) => {
-  readAllAt = new Date();
-  ok(res, { updated: liveNotifications().length }, 'Notifications marked read');
+export const markAllRead: RequestHandler = async (req, res) => {
+  const current = await getSession(req);
+  if (!current) {
+    ok(res, { updated: 0 }, 'Notifications marked read');
+    return;
+  }
+
+  const result = await NotificationModel.updateMany(
+    visibleNotificationFilter(current.user.id),
+    { $addToSet: { readBy: current.user.id } }
+  );
+  ok(res, { updated: result.modifiedCount }, 'Notifications marked read');
 };
