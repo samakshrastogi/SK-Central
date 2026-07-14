@@ -49,13 +49,15 @@ export default function AdminPage() {
   const [applicationQuery, setApplicationQuery] = useState('');
   const [userQuery, setUserQuery] = useState('');
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+  const [applicationError, setApplicationError] = useState('');
   const [userAccessOpen, setUserAccessOpen] = useState(false);
   const applications = useApplicationStore((state) => state.applications);
   const addApplication = useApplicationStore((state) => state.addApplication);
   const updateApplication = useApplicationStore((state) => state.updateApplication);
   const deleteApplication = useApplicationStore((state) => state.deleteApplication);
-  const { register, handleSubmit, reset, watch } = useForm<ApplicationForm>({ defaultValues: defaultForm });
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<ApplicationForm>({ defaultValues: defaultForm });
   const liveLink = watch('liveLink');
+  const formError = errors.name?.message ?? errors.description?.message ?? errors.liveLink?.message ?? errors.category?.message;
 
   const loadUsers = async () => {
     const response = await api.get('/auth/identity-analytics');
@@ -88,20 +90,22 @@ export default function AdminPage() {
     setApplicationModalOpen(false);
     setEditingId(null);
     setDocs([]);
+    setApplicationError('');
     reset(defaultForm);
   };
 
   const onSubmit = async (values: ApplicationForm) => {
-    const slug = values.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    setApplicationError('');
+    const slug = values.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const existing = applications.find((applicationItem) => applicationItem.id === editingId);
     const application: ManagedApplication = {
       ...(existing ?? {}),
       id: existing?.id ?? `custom_${crypto.randomUUID()}`,
       slug,
-      name: values.name,
-      category: values.category,
-      description: values.description,
-      longDescription: values.description,
+      name: values.name.trim(),
+      category: values.category.trim(),
+      description: values.description.trim(),
+      longDescription: values.description.trim(),
       status: values.status,
       version: existing?.version ?? '1.0.0',
       technologies: values.technologies.split(',').map((item) => item.trim()).filter(Boolean),
@@ -110,23 +114,33 @@ export default function AdminPage() {
       metrics: [{ label: 'Users', value: '0' }, { label: 'Requests', value: '0' }, { label: 'Uptime', value: 'New' }],
       features: ['Managed in SK Central', 'Documentation uploaded', 'Live preview configured'],
       roadmap: ['Add production analytics', 'Connect SK Auth', 'Publish release notes'],
-      liveLink: values.liveLink,
+      liveLink: values.liveLink.trim(),
       docs: docs.length ? docs : existing?.docs ?? [{ id: `${slug}-readme`, name: `${values.name} README.md`, type: 'md', uploadedAt: new Date().toISOString(), content: `# ${values.name}\n\n${values.description}\n\nLive link: ${values.liveLink}` }],
       analytics: existing?.analytics ?? fallbackMetrics,
       adminAnalytics: existing?.adminAnalytics
     };
-    try{if(existing)await/**/updateApplication(application);else/**/await/**/addApplication(application);await loadUsers();closeApplicationModal();}catch{return;}
+    try {
+      if (existing) await updateApplication(application);
+      else await addApplication(application);
+      await loadUsers();
+      closeApplicationModal();
+    } catch (error) {
+      const apiError = error as { response?: { data?: { message?: string } }; message?: string };
+      setApplicationError(apiError.response?.data?.message ?? apiError.message ?? 'Unable to save this application.');
+    }
   };
 
   const startAdd = () => {
     setEditingId(null);
     setDocs([]);
+    setApplicationError('');
     reset(defaultForm);
     setApplicationModalOpen(true);
   };
 
   const startEdit = (application: ManagedApplication) => {
     setEditingId(application.id);
+    setApplicationError('');
     reset({
       name: application.name,
       category: application.category,
@@ -248,12 +262,12 @@ export default function AdminPage() {
             </div>
             <div className="grid gap-3 lg:grid-cols-[1fr_0.95fr]">
               <div className="grid gap-2 sm:grid-cols-2">
-                <input {...register('name', { required: true })} placeholder="Application name" className="rounded-2xl border-slate-200 text-sm" />
-                <select {...register('category', { required: true })} className="rounded-2xl border-slate-200 text-sm">{['Website', 'Application', 'Dashboard', 'Other'].map((category) => <option key={category}>{category}</option>)}</select>
-                <input {...register('liveLink', { required: true })} placeholder="Live link" className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
+                <input {...register('name', { required: 'Application name is required.', minLength: { value: 2, message: 'Application name must contain at least 2 characters.' } })} placeholder="Application name" className="rounded-2xl border-slate-200 text-sm" />
+                <select {...register('category', { required: 'Category is required.', minLength: { value: 2, message: 'Category must contain at least 2 characters.' } })} className="rounded-2xl border-slate-200 text-sm">{['Website', 'Application', 'Dashboard', 'Other'].map((category) => <option key={category}>{category}</option>)}</select>
+                <input {...register('liveLink', { required: 'Live link is required.', pattern: { value: /^https?:\/\//i, message: 'Live link must begin with http:// or https://.' } })} placeholder="Live link" className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
                 <select {...register('status')} className="rounded-2xl border-slate-200 text-sm">{['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance'].map((status) => <option key={status}>{status}</option>)}</select>
                 <input {...register('technologies')} placeholder="React, Node, MongoDB" className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
-                <textarea {...register('description', { required: true })} placeholder="Description" rows={4} className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
+                <textarea {...register('description', { required: 'Description is required.', minLength: { value: 8, message: 'Description must contain at least 8 characters.' } })} placeholder="Description" rows={4} className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white/70 p-3 text-xs font-black text-slate-600 sm:col-span-2">
                   <FileUp size={16} /> Upload .md, .pdf, .docx documentation
                   <input type="file" multiple accept=".md,.pdf,.docx" className="hidden" onChange={onFiles} />
@@ -268,7 +282,8 @@ export default function AdminPage() {
                 <iframe title="Application first page preview" src={liveLink} className="h-[340px] w-full rounded-3xl border border-slate-900/10 bg-white" />
               </div>
             </div>
-            <button className="mt-3 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-black text-white" type="submit">{editingId ? 'Save Changes' : 'Add Application'}</button>
+            {applicationError || formError ? <p className="mt-3 rounded-2xl bg-rose-100 px-4 py-3 text-sm font-bold text-rose-800">{applicationError || formError}</p> : null}
+            <button disabled={isSubmitting} className="mt-3 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60" type="submit">{isSubmitting ? 'Saving...' : editingId ? 'Save Changes' : 'Add Application'}</button>
           </form>
         </div>
       ) : null}

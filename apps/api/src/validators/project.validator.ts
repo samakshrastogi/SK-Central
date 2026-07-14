@@ -11,10 +11,10 @@ const documentationSchema = z.object({
 });
 
 export const createProjectSchema = z.object({
-  name: z.string().min(2),
-  slug: z.string().min(2),
-  category: z.string().min(2),
-  description: z.string().min(8),
+  name: z.string().trim().min(2, 'Application name must contain at least 2 characters.'),
+  slug: z.string().trim().min(2, 'Application slug must contain at least 2 characters.').regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Application slug must use lowercase letters, numbers, and hyphens.'),
+  category: z.string().trim().min(2, 'Category must contain at least 2 characters.'),
+  description: z.string().trim().min(8, 'Description must contain at least 8 characters.'),
   longDescription: z.string().optional(),
   technologies: z.array(z.string()).default([]),
   status: z.enum(['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance']).default('Planned'),
