@@ -6,7 +6,27 @@ export class ProjectRepository {
     if (mongoose.connection.readyState !== 1) {
       return [];
     }
-    return ProjectModel.find().sort({ position: 1, createdAt: 1 }).lean();
+
+    const projects = await ProjectModel.find().sort({ createdAt: 1 }).lean();
+    const usedPositions = new Set(
+      projects
+        .map((project) => project.position)
+        .filter((position): position is number => Number.isInteger(position) && position > 0)
+    );
+    let nextPosition = 1;
+    const backfills: Array<{ updateOne: { filter: { _id: unknown }; update: { $set: { position: number } } } }> = [];
+
+    for (const project of projects) {
+      if (Number.isInteger(project.position) && project.position > 0) continue;
+      while (usedPositions.has(nextPosition)) nextPosition += 1;
+      project.position = nextPosition;
+      usedPositions.add(nextPosition);
+      backfills.push({ updateOne: { filter: { _id: project._id }, update: { $set: { position: nextPosition } } } });
+      nextPosition += 1;
+    }
+
+    if (backfills.length) await ProjectModel.bulkWrite(backfills);
+    return projects.sort((left, right) => left.position - right.position || left.createdAt.getTime() - right.createdAt.getTime());
   }
 
   async findBySlug(slug: string) {
