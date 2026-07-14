@@ -86,7 +86,7 @@ JWT_SECRET=development-only
 REDIS_URL=redis://127.0.0.1:6379
 LOG_LEVEL=info
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-3.5-flash
 SK_QUIZ_API_URL=http://localhost:4000/api
 SK_QUIZ_ADMIN_TOKEN=
 ```

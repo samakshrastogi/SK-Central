@@ -9,7 +9,7 @@ interface GeminiResponse {
   }>;
 }
 
-const geminiModels = () => [...new Set([env.GEMINI_MODEL, 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'].filter(Boolean))];
+const geminiModels = () => [...new Set([env.GEMINI_MODEL, 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-latest'].filter(Boolean))];
 
 export class AIService {
   async respond(prompt: string) {
