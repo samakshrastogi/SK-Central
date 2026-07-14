@@ -101,11 +101,12 @@ export default function LoginPage() {
       finish();
       return;
     }
-    setSelectedIdentity(null);
+    setSelectedIdentity(identity);
+    setEmail(identity.email);
     setPassword('');
     setConfirmPassword('');
-    setMessage('');
-    setError('This remembered account does not have an active browser session. Use Add new account or sign in again to refresh SK Auth.');
+    setMessage('Your remembered account is signed out. Enter its password to refresh SK Auth.');
+    setError('');
   };
 
   const switchMode = (nextMode: Mode) => {

@@ -80,9 +80,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
   initialized: false,
   login: async (email, password) => {
     set({ loading: true });
-    const response = await api.post('/auth/login', { email, password });
-    rememberIdentity(response.data.data.user);
-    set({ user: response.data.data.user, loading: false, initialized: true });
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      rememberIdentity(response.data.data.user);
+      set({ user: response.data.data.user, initialized: true });
+    } finally {
+      set({ loading: false });
+    }
   },
   loadSession: async () => {
     set({ loading: true });
