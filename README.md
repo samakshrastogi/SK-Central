@@ -1,6 +1,6 @@
 # SK Central
 
-**One Platform. Infinite Possibilities.**
+**Identity, applications, documentation, and operational insight in one SK workspace.**
 
 SK Central is a central application ecosystem for launching SK products, reading documentation, managing application metadata, tracking analytics, and using an AI assistant scoped to SK applications and docs.
 
@@ -145,3 +145,26 @@ flowchart LR
   AdminAnalytics --> Proxy["SK Central Integration Proxy"]
   Proxy --> AdminUI["SK Central Admin Analytics"]
 ```
+
+## Product overview
+
+| Area | Details |
+| --- | --- |
+| Purpose | A secure identity, application, documentation, and operational insight workspace for the SK ecosystem. |
+| Users | SK product users, administrators, and maintainers. |
+| Connected products | SK Quiz, SK MailPilot, SK Chat, and SK MediaFlow. |
+| Core services | Central authentication, global logout, profile/avatar, application catalog, documentation, notifications, AI assistance, and analytics. |
+
+## Connected application analytics
+
+SK Central polls protected, aggregate-only admin endpoints. Product databases remain owned by each application; SK Central receives operational metrics through a shared service token and never exposes application admin pages to normal users.
+
+```mermaid
+flowchart LR
+  Apps[Connected applications] -->|aggregate metrics + shared service token| Proxy[SK Central integration API]
+  Proxy --> Dashboard[Compact admin analytics]
+  Auth[SK Auth session] --> Apps
+  Profile[Central profile and avatar] --> Apps
+```
+
+Use the same strong value for `SK_QUIZ_SERVICE_TOKEN` in SK Central and `SK_CENTRAL_SERVICE_TOKEN` in every connected backend.
