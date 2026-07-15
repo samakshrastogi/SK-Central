@@ -2,7 +2,7 @@ import { BadgeCheck, Bot, Send, Sparkles, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/services/api';
 import { useUiStore } from '@/store/uiStore';
 
@@ -28,6 +28,15 @@ export function FloatingAssistant() {
   const [messages, setMessages] = useState(initialMessages);
   const [typing, setTyping] = useState(false);
   const [developerOpen, setDeveloperOpen] = useState(false);
+  const developerCreditRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (developerOpen && !developerCreditRef.current?.contains(event.target as Node)) setDeveloperOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [developerOpen]);
 
   const send = async (value = input) => {
     if (!value.trim()) return;
@@ -67,7 +76,7 @@ export function FloatingAssistant() {
       >
         <Bot size={24} />
       </button>
-      <div className="group fixed bottom-20 right-3 z-30 flex items-center justify-end sm:bottom-4 sm:right-5">
+      <div ref={developerCreditRef} className="group fixed bottom-20 right-3 z-30 flex items-center justify-end sm:bottom-4 sm:right-5">
         <a
           href="https://www.linkedin.com/in/samaksh-rastogi-9638b9254/"
           target="_blank"

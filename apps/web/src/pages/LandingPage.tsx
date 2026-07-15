@@ -54,10 +54,10 @@ export default function LandingPage() {
               <Sparkles size={14} /> SK Central
             </span>
             <h1 className="mt-2 max-w-4xl text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
-              One hub for SK applications.
+              Your SK workspace, unified.
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-              Open apps and documentation from one clean workspace.
+              Access connected products, documentation, and account services through one secure platform.
             </p>
           </div>
         </div>
@@ -67,9 +67,9 @@ export default function LandingPage() {
         <div data-hero className="flex flex-wrap items-end justify-between gap-3 px-1">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Applications</p>
-            <h2 className="mt-1 text-2xl font-black text-slate-950">Launch-ready product gallery</h2>
+            <h2 className="mt-1 text-2xl font-black text-slate-950">Connected applications</h2>
           </div>
-          <p className="max-w-xl text-sm text-slate-600">Cards show status, preview, description, and direct actions for users.</p>
+          <p className="max-w-xl text-sm text-slate-600">Production services and product documentation available to your account.</p>
         </div>
         {loading ? (
           <div className="rounded-[1.5rem] border border-slate-900/10 bg-white/75 p-6 text-sm font-bold text-slate-500">Loading applications...</div>

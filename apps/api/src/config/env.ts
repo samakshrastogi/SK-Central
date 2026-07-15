@@ -39,7 +39,10 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default('gemini-3.5-flash'),
   SK_QUIZ_API_URL: z.string().url().default('http://localhost:4001/api'),
   SK_QUIZ_SERVICE_TOKEN: z.string().optional(),
-  SK_QUIZ_ADMIN_TOKEN: z.string().optional()
+  SK_QUIZ_ADMIN_TOKEN: z.string().optional(),
+  SK_MAILPILOT_API_URL: z.string().url().default("https://sk-mailpilot.onrender.com/api"),
+  SK_CHAT_API_URL: z.string().url().default("https://sk-chat-k2u8.onrender.com/api"),
+  SK_MEDIAFLOW_API_URL: z.string().url().default("https://sk-mediaflow.onrender.com/api")
 });
 
 export const env = envSchema.parse(process.env);

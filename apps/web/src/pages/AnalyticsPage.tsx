@@ -59,6 +59,8 @@ const pickNumber = (source: Record<string, unknown>, keys: string[], fallback = 
   return fallback;
 };
 
+const getRows = (value: unknown): Array<Record<string, unknown>> => Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object")) : [];
+
 const pickString = (source: Record<string, unknown>, keys: string[], fallback: string) => {
   for (const key of keys) {
     const value = source[key];
@@ -96,6 +98,7 @@ const formatDuration = (seconds: number) => {
 export default function AnalyticsPage() {
   const [data, setData] = useState<IdentityAnalytics>({ users: [], activities: [] });
   const [skQuiz, setSkQuiz] = useState<SkQuizIntegrationState>({ connected: false, message: 'Waiting for SK Quiz analytics.', data: null });
+  const [connectedInsights, setConnectedInsights] = useState<Record<string, SkQuizIntegrationState>>({});
   const [activeProject, setActiveProject] = useState('sk-central');
   const [activeModal, setActiveModal] = useState<'users' | 'logins' | 'quizVisits' | 'mailpilotVisits' | 'chatVisits' | 'mediaflowVisits' | 'time' | null>(null);
   const [liveTick, setLiveTick] = useState(Date.now());
@@ -104,7 +107,7 @@ export default function AnalyticsPage() {
   const applications = useApplicationStore((state) => state.applications);
   const projectTabs = useMemo(() => {
     const slugs = ['sk-central', 'sk-quiz', 'sk-mailpilot', 'sk-chat', 'sk-mediaflow', ...applications.map((app) => app.slug)]
-      .map((slug) => (slug === 'sk-quiz-coach' ? 'sk-quiz' : slug));
+      .map((slug) => slug === 'sk-quiz-coach' ? 'sk-quiz' : slug === 'sk-connect' ? 'sk-chat' : slug);
     return [...new Set(slugs)];
   }, [applications]);
 
@@ -127,6 +130,24 @@ export default function AnalyticsPage() {
     const load = async () => {
       const response = await api.get('/integrations/sk-quiz/admin-analytics');
       setSkQuiz(response.data.data);
+    };
+    void load();
+    const interval = window.setInterval(load, 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const projects = ["sk-mailpilot", "sk-chat", "sk-mediaflow"];
+    const load = async () => {
+      const results = await Promise.all(projects.map(async (project) => {
+        try {
+          const response = await api.get(`/integrations/${project}/admin-analytics`);
+          return [project, response.data.data as SkQuizIntegrationState] as const;
+        } catch (error) {
+          return [project, { connected: false, message: error instanceof Error ? error.message : "Unable to load live analytics.", data: null }] as const;
+        }
+      }));
+      setConnectedInsights(Object.fromEntries(results));
     };
     void load();
     const interval = window.setInterval(load, 30_000);
@@ -290,57 +311,6 @@ export default function AnalyticsPage() {
     { label: 'SK Chat Visits', value: chatVisitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'chatVisits' as const },
     { label: 'SK MediaFlow Visits', value: mediaflowVisitRows.reduce((sum, row) => sum + row.count, 0), icon: MousePointerClick, modal: 'mediaflowVisits' as const }
   ];
-  const skQuizSummary = mergeMetricSources(skQuiz.data, [
-    'summary',
-    'overview',
-    'analytics',
-    'metrics',
-    'counts',
-    'quizzes',
-    'attempts',
-    'exams',
-    'studyPlans',
-    'ai',
-    'mentor'
-  ]);
-  const skQuizMetrics: SkQuizMetric[] = [
-    {
-      label: 'Quiz Attempts',
-      value: pickString(skQuizSummary, ['attempts', 'quizAttempts', 'totalAttempts', 'completedAttempts', 'totalQuizAttempts'], '0'),
-      hint: 'Total submitted quiz attempts from SK Quiz.',
-      icon: FileQuestion
-    },
-    {
-      label: 'Completion',
-      value: `${pickNumber(skQuizSummary, ['completionRate', 'completion', 'quizCompletion', 'averageCompletionRate'], 0)}%`,
-      hint: 'Learners completing quiz flows.',
-      icon: Target
-    },
-    {
-      label: 'Accuracy',
-      value: `${pickNumber(skQuizSummary, ['accuracy', 'averageAccuracy', 'avgAccuracy', 'averageScore'], 0)}%`,
-      hint: 'Average score quality across attempts.',
-      icon: Gauge
-    },
-    {
-      label: 'Active Learners',
-      value: pickString(skQuizSummary, ['activeLearners', 'students', 'learners', 'users', 'totalUsers'], '0'),
-      hint: 'Learners visible to SK Quiz analytics.',
-      icon: GraduationCap
-    },
-    {
-      label: 'Study Plans',
-      value: pickString(skQuizSummary, ['studyPlans', 'plans', 'activePlans', 'totalStudyPlans'], '0'),
-      hint: 'Study plans created or active.',
-      icon: BookOpenCheck
-    },
-    {
-      label: 'AI Guidance',
-      value: pickString(skQuizSummary, ['aiRequests', 'mentorRequests', 'recommendations', 'coachRequests'], '0'),
-      hint: 'Coach or AI recommendation activity.',
-      icon: Brain
-    }
-  ];
   const modalMap = {
     users: {
       title: 'Unique Users',
@@ -437,52 +407,9 @@ export default function AnalyticsPage() {
           </section>
         </>
       ) : activeProject === 'sk-quiz' ? (
-        <section className="glass rounded-[2rem] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><BarChart3 size={20} /> SK Quiz learning intelligence</h2>
-              <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-                Project-specific analytics belong here: exams, quizzes, completion, accuracy, plans, AI guidance, content quality, and learner risk.
-              </p>
-            </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-black ${skQuiz.connected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
-              {skQuiz.connected ? 'Live SK Quiz data' : 'Waiting for live SK Quiz data'}
-            </span>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-            {skQuizMetrics.map(({ label, value, hint, icon: Icon }) => (
-              <div key={label} className="rounded-[1.35rem] border border-slate-900/5 bg-white/70 p-3 shadow-sm">
-                <span className="grid h-9 w-9 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Icon size={17} /></span>
-                <strong className="mt-3 block text-xl text-slate-950">{value}</strong>
-                <span className="block text-xs font-black text-slate-500">{label}</span>
-                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{hint}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {[
-              ['Exam Coverage', pickString(skQuizSummary, ['exams', 'totalExams', 'selectedExams'], '0'), 'Tracked exam preferences and coverage.'],
-              ['Subject Risk', pickString(skQuizSummary, ['weakSubjects', 'riskSubjects', 'subjectRisk'], 'Waiting'), 'Subjects that need admin or content attention.'],
-              ['Content Health', pickString(skQuizSummary, ['questionBankHealth', 'contentHealth', 'publishedQuestions'], 'Waiting'), 'Question bank quality and publish readiness.']
-            ].map(([label, value, hint]) => (
-              <div key={label} className="rounded-[1.35rem] border border-slate-900/5 bg-white/55 p-4">
-                <span className="block text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
-                <strong className="mt-2 block text-lg text-slate-950">{value}</strong>
-                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{hint}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-[1.35rem] border border-cyan-200/70 bg-cyan-50/70 p-4 text-sm font-bold leading-6 text-cyan-900">
-            {skQuiz.message || 'SK Central is polling the SK Quiz admin analytics endpoint.'}
-          </div>
-        </section>
+        <QuizIntelligencePanel state={skQuiz} />
       ) : (
-        <section className="glass rounded-[2rem] p-5">
-          <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><BarChart3 size={20} /> {activeProject} analytics blueprint</h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-            This app tab is ready for project-specific adapters. Keep shared identity metrics in SK Central and stream only product-owned signals here: health, usage, errors, documents, releases, cost, and feature adoption.
-          </p>
-        </section>
+        <ConnectedApplicationPanel project={activeProject} state={connectedInsights[activeProject]} />
       )}
       {activeModal ? <AnalyticsModal {...modalMap[activeModal]} onClose={() => setActiveModal(null)} /> : null}
     </div>
@@ -527,6 +454,80 @@ function AnalyticsModal({ title, columns, rows, footer, onClose }: { title: stri
   );
 }
 
+interface CompactMetric { label: string; value: string | number; hint: string }
 
+function LivePanelHeader({ connected, message, title, subtitle }: { connected: boolean; message: string; title: string; subtitle: string }) {
+  return <div className="flex flex-wrap items-start justify-between gap-3">
+    <div><h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><BarChart3 size={20} /> {title}</h2><p className="mt-1 max-w-4xl text-sm font-semibold leading-6 text-slate-500">{subtitle}</p></div>
+    <span className={`rounded-full px-3 py-1 text-xs font-black ${connected ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>{connected ? "Live data" : "Connection pending"}</span>
+    {!connected && message ? <p className="w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">{message}</p> : null}
+  </div>;
+}
 
+function CompactMetrics({ metrics }: { metrics: CompactMetric[] }) {
+  return <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">{metrics.map((metric) => <div key={metric.label} className="rounded-[1.2rem] border border-slate-900/5 bg-white/70 p-3 shadow-sm"><strong className="block text-xl text-slate-950">{metric.value}</strong><span className="block text-xs font-black text-slate-600">{metric.label}</span><p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">{metric.hint}</p></div>)}</div>;
+}
 
+function MiniBars({ rows, valueKey = "count" }: { rows: Array<Record<string, unknown>>; valueKey?: string }) {
+  const max = Math.max(1, ...rows.map((row) => pickNumber(row, [valueKey], 0)));
+  return <div className="space-y-2">{rows.map((row, index) => { const value = pickNumber(row, [valueKey], 0); return <div key={`${String(row.label ?? row.confidence ?? index)}-${index}`}><div className="flex justify-between gap-3 text-xs font-bold text-slate-600"><span>{String(row.label ?? row.confidence ?? "Unknown")}</span><span>{value}{valueKey.toLowerCase().includes("rate") || valueKey === "accuracy" ? "%" : ""}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, (value / max) * 100)}%` }} /></div></div>; })}</div>;
+}
+
+function QuizIntelligencePanel({ state }: { state: SkQuizIntegrationState }) {
+  const root = getRecord(state.data);
+  const summary = getRecord(root.summary);
+  const intelligence = getRecord(root.learningIntelligence);
+  const funnel = getRows(intelligence.onboardingFunnel);
+  const gamification = getRecord(intelligence.gamification);
+  const inactivity = getRecord(intelligence.inactivity);
+  const compliance = getRecord(intelligence.planCompliance);
+  const subjectRows = getRows(intelligence.subjectTimeInvestment);
+  const outliers = getRows(intelligence.questionOutliers);
+  const confidence = getRows(intelligence.confidenceAccuracy);
+  const quizFunnel = getRecord(intelligence.quizFunnel);
+  const quizStatuses = getRecord(quizFunnel.statuses);
+  const metrics: CompactMetric[] = [
+    { label: "Learners", value: pickNumber(summary, ["userCount"], 0), hint: "Registered SK Quiz accounts" },
+    { label: "Reached first quiz", value: funnel.at(-1)?.count as number ?? 0, hint: "End-to-end onboarding conversion" },
+    { label: "Average streak", value: `${pickNumber(gamification, ["averageStreak"], 0)} days`, hint: "Current learner consistency" },
+    { label: "Inactive 7+ days", value: pickNumber(inactivity, ["inactive7d"], 0), hint: "Re-engagement cohort" },
+    { label: "Carry-forward rate", value: `${pickNumber(compliance, ["carryForwardRate"], 0)}%`, hint: "Due tasks still incomplete" },
+    { label: "Quiz abandonment", value: `${pickNumber(quizFunnel, ["abandonmentRate"], 0)}%`, hint: "In-progress or cancelled sessions" }
+  ];
+  return <section className="glass rounded-[2rem] p-4 sm:p-5">
+    <LivePanelHeader connected={state.connected} message={state.message} title="SK Quiz learning intelligence" subtitle="Live learner progression, planning compliance, question quality, confidence calibration, and quiz completion signals." />
+    <CompactMetrics metrics={metrics} />
+    <div className="mt-4 grid gap-3 xl:grid-cols-3">
+      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4 xl:col-span-2"><h3 className="text-sm font-black text-slate-950">Onboarding funnel</h3><div className="mt-3 grid gap-2 sm:grid-cols-5">{funnel.map((stage) => <div key={String(stage.key)} className="rounded-xl bg-slate-50 p-3"><strong className="text-lg text-slate-950">{String(stage.count ?? 0)}</strong><span className="block text-[11px] font-black text-slate-600">{String(stage.label ?? "Stage")}</span><span className="mt-1 block text-[10px] font-bold text-cyan-700">{String(stage.conversionRate ?? 0)}% from prior</span></div>)}</div></section>
+      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black text-slate-950">Inactivity cohorts</h3><div className="mt-3 grid grid-cols-2 gap-2">{[["No study plan", "signedUpNoPlan"], ["Plan, no quiz", "planButNoQuiz"], ["Inactive 7 days", "inactive7d"], ["Inactive 30 days", "inactive30d"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-2"><strong className="block text-lg">{pickNumber(inactivity, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</div></section>
+    </div>
+    <div className="mt-3 grid gap-3 lg:grid-cols-3">
+      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Streak distribution</h3><div className="mt-3"><MiniBars rows={getRows(gamification.streakDistribution)} /></div></section>
+      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Level distribution</h3><div className="mt-3"><MiniBars rows={getRows(gamification.levelDistribution)} /></div></section>
+      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">XP distribution</h3><div className="mt-3"><MiniBars rows={getRows(gamification.xpDistribution)} /></div></section>
+    </div>
+    <div className="mt-3 grid gap-3 xl:grid-cols-2">
+      <section className="overflow-hidden rounded-[1.3rem] border border-slate-900/5 bg-white/60"><div className="p-4"><h3 className="text-sm font-black">Study plan compliance by subject</h3><p className="text-xs font-semibold text-slate-500">Planned hours compared with tracked active study time.</p></div><div className="max-h-64 overflow-auto"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-white"><tr><th className="px-4 py-2">Subject</th><th>Planned</th><th>Active</th><th>Done</th></tr></thead><tbody>{subjectRows.map((row) => <tr key={String(row.subject)} className="border-t border-slate-900/5"><td className="px-4 py-2 font-bold">{String(row.subject)}</td><td>{String(row.plannedHours)}h</td><td>{String(row.actualHours)}h</td><td>{String(row.completionRate)}%</td></tr>)}</tbody></table></div></section>
+      <section className="overflow-hidden rounded-[1.3rem] border border-slate-900/5 bg-white/60"><div className="p-4"><h3 className="text-sm font-black">Question-bank outliers</h3><p className="text-xs font-semibold text-slate-500">Easy questions below 30% accuracy and hard questions above 95%.</p></div><div className="max-h-64 overflow-auto"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-white"><tr><th className="px-4 py-2">Question</th><th>Difficulty</th><th>Attempts</th><th>Accuracy</th></tr></thead><tbody>{outliers.length ? outliers.map((row) => <tr key={String(row.questionId)} className="border-t border-slate-900/5"><td className="max-w-56 px-4 py-2 font-bold">{String(row.question)}</td><td>{String(row.difficulty)}</td><td>{String(row.attempts)}</td><td>{String(row.accuracy)}%</td></tr>) : <tr><td colSpan={4} className="px-4 py-5 font-bold text-emerald-700">No suspicious difficulty outliers detected.</td></tr>}</tbody></table></div></section>
+    </div>
+    <div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Confidence vs accuracy</h3><div className="mt-3"><MiniBars rows={confidence} valueKey="accuracy" /></div></section><section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Quiz session funnel</h3><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">{Object.entries(quizStatuses).map(([status, value]) => <div key={status} className="rounded-xl bg-slate-50 p-2"><strong className="block text-lg">{String(value)}</strong><span className="text-[10px] font-black uppercase text-slate-500">{status.replaceAll("_", " ")}</span></div>)}</div></section></div>
+  </section>;
+}
+
+function ConnectedApplicationPanel({ project, state }: { project: string; state?: SkQuizIntegrationState }) {
+  const root = getRecord(state?.data);
+  const connected = Boolean(state?.connected);
+  if (project === "sk-mailpilot") {
+    const summary = getRecord(root.summary); const health = getRecord(root.health);
+    const metrics: CompactMetric[] = [{ label: "Users", value: pickNumber(summary, ["users"], 0), hint: "MailPilot accounts" }, { label: "Connected mailboxes", value: pickNumber(summary, ["activeMailboxes"], 0), hint: "Active Gmail connections" }, { label: "Processed emails", value: pickNumber(summary, ["processedEmails"], 0), hint: "Indexed active mail" }, { label: "Pending replies", value: pickNumber(summary, ["pendingReplies"], 0), hint: "Messages needing action" }, { label: "Overdue replies", value: pickNumber(summary, ["overdueReplies"], 0), hint: "Reply SLA at risk" }, { label: "Sync health", value: `${pickNumber(health, ["syncSuccessRate"], 0)}%`, hint: "Successful mailbox syncs" }];
+    return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK MailPilot analytics."} title="SK MailPilot operations" subtitle="Live mailbox adoption, processing throughput, reply workload, scheduling, and synchronization health." /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] bg-white/60 p-4"><h3 className="text-sm font-black">Email categories</h3><div className="mt-3"><MiniBars rows={getRows(root.categoryDistribution)} valueKey="value" /></div></section><section className="grid grid-cols-2 gap-2 rounded-[1.3rem] bg-white/60 p-4">{[["Recent 7 days", "recentEmails"], ["High priority", "highPriority"], ["Scheduled", "scheduled"], ["Sent", "sent"], ["Failed", "failed"], ["Pending approvals", "pendingApprovals"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><strong className="block text-lg">{pickNumber(summary, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</section></div></section>;
+  }
+  if (project === "sk-chat") {
+    const users = getRecord(root.users); const messages = getRecord(root.messages); const chats = getRecord(root.chats); const communities = getRecord(root.communities); const sessions = getRecord(root.sessions); const charts = getRecord(root.charts);
+    const metrics: CompactMetric[] = [{ label: "Users", value: pickNumber(users, ["total"], 0), hint: "Registered members" }, { label: "Verified", value: pickNumber(users, ["verified"], 0), hint: "Verified accounts" }, { label: "Online now", value: pickNumber(users, ["online"], 0), hint: "Current presence" }, { label: "Messages", value: pickNumber(messages, ["total"], 0), hint: "Messages created" }, { label: "Conversations", value: pickNumber(chats, ["total"], 0), hint: "Direct and group chats" }, { label: "Communities", value: pickNumber(communities, ["total"], 0), hint: "Community spaces" }];
+    return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK Chat analytics."} title="SK Chat engagement" subtitle="Live account adoption, conversation volume, communities, message throughput, and active sessions." /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 lg:grid-cols-[2fr_1fr]"><section className="rounded-[1.3rem] bg-white/60 p-4"><h3 className="text-sm font-black">Message volume · last 7 days</h3><div className="mt-3"><MiniBars rows={getRows(charts.messagesOverTime).map((row) => ({ label: row._id, count: row.count }))} /></div></section><section className="rounded-[1.3rem] bg-white/60 p-4"><strong className="block text-3xl">{pickNumber(sessions, ["active"], 0)}</strong><span className="text-xs font-black text-slate-500">Active device sessions</span></section></div></section>;
+  }
+  const cards = getRecord(root.cards); const activity = getRecord(root.userActivity); const watch = getRecord(root.watchMetrics); const invites = getRecord(root.inviteFunnel);
+  const metrics: CompactMetric[] = [{ label: "Unique users", value: pickNumber(cards, ["uniqueUsers"], 0), hint: "Accounts using MediaFlow" }, { label: "Total logins", value: pickNumber(cards, ["totalLogins"], 0), hint: "Authentication activity" }, { label: "DAU / WAU", value: `${pickNumber(activity, ["dau"], 0)} / ${pickNumber(activity, ["wau"], 0)}`, hint: "Daily and weekly active" }, { label: "MAU", value: pickNumber(activity, ["mau"], 0), hint: "Monthly active users" }, { label: "Watch time", value: formatDuration(pickNumber(watch, ["totalWatchSeconds"], 0)), hint: "Total video consumption" }, { label: "Completion", value: `${pickNumber(watch, ["averageCompletionRate"], 0)}%`, hint: "Average viewing completion" }];
+  return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK MediaFlow analytics."} title="SK MediaFlow growth" subtitle="Live audience activity, watch quality, content engagement, organizations, and invitation conversion." /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">{[["Likes", cards.likes], ["Dislikes", cards.dislikes], ["Shares", cards.shares], ["Invites", invites.total], ["Accepted", invites.accepted], ["Invite conversion", `${String(invites.acceptanceRate ?? 0)}%`]].map(([label, value]) => <div key={String(label)} className="rounded-[1.2rem] bg-white/60 p-3"><strong className="block text-lg">{String(value ?? 0)}</strong><span className="text-[10px] font-black text-slate-500">{String(label)}</span></div>)}</div></section>;
+}

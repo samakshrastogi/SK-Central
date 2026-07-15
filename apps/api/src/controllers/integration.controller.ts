@@ -106,3 +106,40 @@ export const getSkQuizAdminAnalytics: RequestHandler = async (_req, res) => {
     });
   }
 };
+
+type ConnectedApplication = "sk-mailpilot" | "sk-chat" | "sk-mediaflow";
+
+const connectedApplications: Record<ConnectedApplication, { baseUrl: string; path: string; label: string }> = {
+  "sk-mailpilot": { baseUrl: env.SK_MAILPILOT_API_URL, path: "/audit/central-insights", label: "SK MailPilot" },
+  "sk-chat": { baseUrl: env.SK_CHAT_API_URL, path: "/admin/central-insights", label: "SK Chat" },
+  "sk-mediaflow": { baseUrl: env.SK_MEDIAFLOW_API_URL, path: "/admin/metrics", label: "SK MediaFlow" }
+};
+
+export const getConnectedApplicationAnalytics: RequestHandler = async (req, res) => {
+  const application = req.params.application as ConnectedApplication;
+  const config = connectedApplications[application];
+  if (!config) {
+    ok(res, { connected: false, status: 404, data: null, message: "Unknown connected application." });
+    return;
+  }
+  if (!env.SK_QUIZ_SERVICE_TOKEN) {
+    ok(res, { connected: false, status: 0, data: null, source: config.baseUrl, authRequired: true, message: "The shared integration service token is not configured." });
+    return;
+  }
+  const url = `${trimSlash(config.baseUrl)}${config.path}`;
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json", "x-sk-central-token": env.SK_QUIZ_SERVICE_TOKEN } });
+    const contentType = response.headers.get("content-type") ?? "";
+    const text = await response.text();
+    const isHtml = contentType.includes("text/html") || text.trimStart().startsWith("<");
+    let body: Record<string, unknown> | null = null;
+    if (!isHtml) { try { body = JSON.parse(text || "{}") as Record<string, unknown>; } catch { body = null; } }
+    if (!response.ok || !body) {
+      ok(res, { connected: false, status: response.status, source: url, data: null, message: `${config.label} analytics returned ${response.status}${isHtml ? " and an HTML page" : ""}.` });
+      return;
+    }
+    ok(res, { connected: true, status: response.status, source: url, data: body.data ?? body.stats ?? body, message: `Fetched realtime ${config.label} analytics.` });
+  } catch (error) {
+    ok(res, { connected: false, status: 0, source: url, data: null, message: error instanceof Error ? error.message : `Unable to reach ${config.label}.` });
+  }
+};
