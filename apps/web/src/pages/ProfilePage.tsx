@@ -160,7 +160,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div ref={rootRef} className="grid min-h-0 gap-3 pb-28 xl:grid-cols-[360px_1fr]">
+    <div ref={rootRef} className="grid min-h-0 gap-3 xl:grid-cols-[360px_1fr]">
       <section data-profile className="relative overflow-hidden rounded-[2rem] border border-slate-900/10 bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.28)]">
         <div data-orbit className="absolute -right-24 -top-24 h-56 w-56 rounded-full border border-cyan-300/30" />
         <div className="relative">
