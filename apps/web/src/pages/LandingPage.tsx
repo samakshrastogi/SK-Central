@@ -1,10 +1,33 @@
 import { BookOpen, ExternalLink, Sparkles } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import gsap from 'gsap';
 gsap.config({ nullTargetWarn: false });
 import { useApplicationStore } from '@/store/applicationStore';
 import { cn } from '@/utils/cn';
+function ExpandableDescription({ description }: { description: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return expanded ? (
+    <p className="mt-1 text-sm leading-5 text-slate-600">
+      {description}{' '}
+      <button type="button" onClick={() => setExpanded(false)} className="font-black text-cyan-700 underline underline-offset-2">
+        Read less
+      </button>
+    </p>
+  ) : (
+    <div className="relative mt-1 min-h-10">
+      <p className="line-clamp-2 min-h-10 pr-20 text-sm leading-5 text-slate-600">{description}</p>
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="absolute bottom-0 right-0 bg-gradient-to-l from-white via-white to-white/70 pl-5 text-sm font-black leading-5 text-cyan-700 underline underline-offset-2"
+      >
+        Read more
+      </button>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -89,7 +112,7 @@ export default function LandingPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-black text-slate-950">{app.name}</h3>
-                    <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-600">{app.description}</p>
+                    <ExpandableDescription description={app.description} />
                   </div>
                 </div>
                 <div className="mt-4 flex gap-2">

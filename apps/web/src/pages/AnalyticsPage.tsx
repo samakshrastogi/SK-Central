@@ -404,16 +404,29 @@ export default function AnalyticsPage() {
 
       {activeProject === 'sk-central' ? (
         <>
-          <section className="grid gap-2 md:grid-cols-2 xl:grid-cols-7">
-            {cards.map(({ label, value, icon: Icon, modal }) => (
-              <button key={label} type="button" onClick={() => setActiveModal(modal)} className="glass flex min-h-20 items-center gap-3 rounded-[1.4rem] p-3 text-left transition hover:-translate-y-0.5 hover:shadow-xl">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Icon size={18} /></span>
-                <span className="min-w-0">
-                  <strong className="block truncate text-xl text-slate-950">{value}</strong>
-                  <span className="block truncate text-xs font-black text-slate-500">{label}</span>
-                </span>
-              </button>
-            ))}
+          <section className="space-y-2">
+            <div className="grid gap-2 md:grid-cols-3">
+              {cards.slice(0, 3).map(({ label, value, icon: Icon, modal }) => (
+                <button key={label} type="button" onClick={() => setActiveModal(modal)} className="glass flex min-h-20 items-center gap-3 rounded-[1.4rem] p-3 text-left transition hover:-translate-y-0.5 hover:shadow-xl">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Icon size={18} /></span>
+                  <span className="min-w-0">
+                    <strong className="block truncate text-xl text-slate-950">{value}</strong>
+                    <span className="block truncate text-xs font-black text-slate-500">{label}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {cards.slice(3).map(({ label, value, icon: Icon, modal }) => (
+                <button key={label} type="button" onClick={() => setActiveModal(modal)} className="glass flex min-h-20 items-center gap-3 rounded-[1.4rem] p-3 text-left transition hover:-translate-y-0.5 hover:shadow-xl">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-100 text-cyan-700"><Icon size={18} /></span>
+                  <span className="min-w-0">
+                    <strong className="block truncate text-xl text-slate-950">{value}</strong>
+                    <span className="block truncate text-xs font-black text-slate-500">{label}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
           </section>
 
           <section className="glass rounded-[2rem] p-5">

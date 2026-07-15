@@ -23,13 +23,20 @@ interface AdminUser {
   role: 'user' | 'admin';
 }
 
+interface AuditChange {
+  field: string;
+  label: string;
+  oldValue: string;
+  newValue: string;
+}
+
 interface AuditLog {
   _id: string;
   action: string;
   createdAt: string;
   actorUserId?: { name: string; email: string };
   targetUserId?: { name: string; email: string };
-  metadata?: { previousRole?: string; nextRole?: string; resourceName?: string; resourceType?: string };
+  metadata?: { previousRole?: string; nextRole?: string; resourceName?: string; resourceType?: string; changes?: AuditChange[] };
 }
 
 const defaultForm: ApplicationForm = {
@@ -43,6 +50,25 @@ const defaultForm: ApplicationForm = {
 };
 
 const fallbackMetrics = { users: '0', requests: '0', uptime: 'New', errors: '0%', storage: '0 MB', growth: '0%' };
+function AuditDetails({ audit }: { audit: AuditLog }) {
+  const changes = audit.metadata?.changes;
+  if (changes?.length) {
+    return (
+      <div className="space-y-1.5">
+        {changes.map((change, index) => (
+          <div key={`${change.field}-${index}`} className="rounded-lg bg-slate-50 px-2 py-1.5 leading-4">
+            <span className="block font-black text-slate-700">{change.label}</span>
+            <span className="break-words text-rose-600">{change.oldValue}</span>
+            <span className="px-1 text-slate-400" aria-hidden>→</span>
+            <span className="break-words text-emerald-700">{change.newValue}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (audit.metadata?.nextRole) return <>{audit.metadata.previousRole} → {audit.metadata.nextRole}</>;
+  return <>{audit.metadata?.resourceType ?? '—'}</>;
+}
 
 export default function AdminPage() {
   const [docs, setDocs] = useState<ApplicationDocumentation[]>([]);
@@ -274,20 +300,20 @@ export default function AdminPage() {
                 </div>
                 <h3 className="mt-3 font-black text-slate-900">{audit.metadata?.resourceName ?? audit.targetUserId?.name ?? 'System'}</h3>
                 <p className="mt-1 break-all text-xs font-semibold text-slate-500">{audit.actorUserId?.name ?? 'System'} · {audit.actorUserId?.email ?? 'Automated'}</p>
-                <p className="mt-2 text-xs font-semibold text-slate-600">{audit.metadata?.nextRole ? `${audit.metadata.previousRole} → ${audit.metadata.nextRole}` : audit.metadata?.resourceType ?? '—'}</p>
+                <div className="mt-2 text-xs font-semibold text-slate-600"><AuditDetails audit={audit} /></div>
               </article>
             )) : <p className="rounded-2xl bg-white/70 p-4 text-sm font-bold text-slate-500">No admin logs yet.</p>}
           </div>
           <div className="mt-3 hidden max-h-[420px] overflow-auto rounded-2xl border border-slate-900/10 bg-white/70 sm:block">
             <table className="min-w-[680px] w-full table-fixed text-left text-xs">
-              <thead className="sticky top-0 bg-white/95 font-black uppercase tracking-wide text-slate-500 backdrop-blur"><tr><th className="px-3 py-3">Date & time</th><th className="px-3 py-3">Admin</th><th className="px-3 py-3">Action</th><th className="px-3 py-3">Changed item</th><th className="px-3 py-3">Details</th></tr></thead>
+              <thead className="sticky top-0 bg-white/95 font-black uppercase tracking-wide text-slate-500 backdrop-blur"><tr><th className="px-3 py-3">Date & time</th><th className="px-3 py-3">Admin</th><th className="px-3 py-3">Action</th><th className="px-3 py-3">Changed item</th><th className="w-[34%] px-3 py-3">Details</th></tr></thead>
               <tbody>{audits.length ? audits.map((audit) => (
                 <tr key={audit._id} className="border-t border-slate-900/5 align-top">
                   <td className="whitespace-nowrap px-3 py-3 font-bold text-slate-500">{formatDate(audit.createdAt)}</td>
                   <td className="px-3 py-3"><strong className="block text-slate-800">{audit.actorUserId?.name ?? 'System'}</strong><span className="text-slate-500">{audit.actorUserId?.email ?? 'Automated'}</span></td>
                   <td className="px-3 py-3"><span className="rounded-full bg-cyan-100 px-2 py-1 font-black text-cyan-800">{audit.action.replaceAll('_', ' ')}</span></td>
                   <td className="px-3 py-3 font-bold text-slate-700">{audit.metadata?.resourceName ?? audit.targetUserId?.name ?? 'System'}</td>
-                  <td className="break-words px-3 py-3 font-semibold text-slate-500">{audit.metadata?.nextRole ? `${audit.metadata.previousRole} → ${audit.metadata.nextRole}` : audit.metadata?.resourceType ?? '—'}</td>
+                  <td className="break-words px-3 py-3 font-semibold text-slate-500"><AuditDetails audit={audit} /></td>
                 </tr>
               )) : <tr><td colSpan={5} className="px-3 py-6 font-bold text-slate-500">No admin logs yet.</td></tr>}</tbody>
             </table>
