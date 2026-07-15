@@ -5,11 +5,36 @@ import gsap from 'gsap';
 import { api } from '@/services/api';
 import { useApplicationStore } from '@/store/applicationStore';
 import { getInitials, useAuthStore } from '@/store/authStore';
+import { formatDate } from '@/utils/formatDate';
+const resizeAvatar = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onerror = () => reject(new Error('Could not read this image.'));
+  reader.onload = () => {
+    const image = new Image();
+    image.onerror = () => reject(new Error('This image format is not supported.'));
+    image.onload = () => {
+      const size = Math.min(512, Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext('2d');
+      if (!context) return reject(new Error('Could not prepare this image.'));
+      const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    image.src = String(reader.result);
+  };
+  reader.readAsDataURL(file);
+});
 
 export default function ProfilePage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const profile = useApplicationStore((state) => state.profile);
   const updateProfile = useApplicationStore((state) => state.updateProfile);
+  const saveProfileImage = useApplicationStore((state) => state.saveProfileImage);
   const applications = useApplicationStore((state) => state.applications);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -23,6 +48,8 @@ export default function ProfilePage() {
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState('');
 
   useEffect(() => {
     if (!rootRef.current) return;
@@ -38,14 +65,13 @@ export default function ProfilePage() {
     updateProfile({
       name: profile.name || user.name,
       email: user.email,
-      avatar: profile.avatar || user.avatarInitials || '',
-      avatarUrl: profile.avatarUrl || user.avatarUrl || ''
+      avatarUrl: user.avatarUrl || ''
     });
   }, [user?.id]);
 
   const onInput = (key: keyof typeof profile) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const value = event.target.value;
-    updateProfile(key === 'avatar' ? { avatar: value, avatarUrl: '' } : { [key]: value });
+    updateProfile({ [key]: value });
   };
 
   const signOut = async () => {
@@ -56,7 +82,8 @@ export default function ProfilePage() {
   const displayName = profile.name || user?.name || 'SK User';
   const displayEmail = user?.email || profile.email;
   const displayBio = profile.bio || 'Manage your SK applications, documents, analytics, and connected sessions from one secure identity.';
-  const displayAvatar = profile.avatar || getInitials(displayName || displayEmail);
+  const displayAvatarUrl = user?.avatarUrl || profile.avatarUrl || '';
+  const displayInitials = getInitials(displayName || displayEmail);
   const permissions = user?.permissions?.length ? user.permissions : ['apps:read'];
 
   const openPasswordModal = async () => {
@@ -109,14 +136,27 @@ export default function ProfilePage() {
       setPasswordBusy(false);
     }
   };
-  const profileFields = [displayName, displayEmail, profile.location, profile.role, profile.bio, profile.avatarUrl || profile.avatar];
+  const profileFields = [displayName, displayEmail, profile.location, profile.role, profile.bio, displayAvatarUrl];
   const profileCompletion = Math.round((profileFields.filter(Boolean).length / profileFields.length) * 100);
-  const onAvatarUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const onAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => updateProfile({ avatarUrl: String(reader.result), avatar: '' });
-    reader.readAsDataURL(file);
+    event.target.value = '';
+    if (!file || avatarBusy) return;
+    if (!file.type.startsWith('image/')) {
+      setAvatarMessage('Choose a valid image file.');
+      return;
+    }
+    setAvatarBusy(true);
+    setAvatarMessage('Saving profile image...');
+    try {
+      const avatarUrl = await resizeAvatar(file);
+      await saveProfileImage(avatarUrl);
+      setAvatarMessage('Profile image saved to your SK account.');
+    } catch (error) {
+      setAvatarMessage(error instanceof Error ? error.message : 'Could not save profile image.');
+    } finally {
+      setAvatarBusy(false);
+    }
   };
 
   return (
@@ -125,15 +165,15 @@ export default function ProfilePage() {
         <div data-orbit className="absolute -right-24 -top-24 h-56 w-56 rounded-full border border-cyan-300/30" />
         <div className="relative">
           <label className="group relative block h-24 w-24 cursor-pointer overflow-hidden rounded-[2rem] bg-gradient-to-br from-cyan-300 via-amber-200 to-rose-300 text-slate-950 shadow-2xl">
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
+            {displayAvatarUrl ? (
+              <img src={displayAvatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="grid h-full w-full place-items-center text-4xl font-black">{displayAvatar}</span>
+              <span className="grid h-full w-full place-items-center text-4xl font-black">{displayInitials}</span>
             )}
             <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-slate-950/75 py-2 text-xs font-black text-white opacity-0 transition group-hover:opacity-100">
               <Camera size={14} /> Upload
             </span>
-            <input type="file" accept="image/*" onChange={onAvatarUpload} className="hidden" />
+            <input type="file" accept="image/*" onChange={(event) => void onAvatarUpload(event)} disabled={avatarBusy} className="hidden" />
           </label>
           <div className="mt-4 flex items-center gap-2">
             <h1 className="text-2xl font-black">{displayName}</h1>
@@ -153,7 +193,7 @@ export default function ProfilePage() {
             {[
               [Mail, displayEmail],
               [MapPin, profile.location],
-              [CalendarDays, 'Joined 2026']
+              [CalendarDays, user?.createdAt ? `Joined ${formatDate(user.createdAt)}` : 'Joined']
             ].map(([Icon, value]) => (
               <div key={value as string} className="flex items-center gap-3 rounded-xl bg-white/8 p-2.5 text-xs">
                 <Icon size={17} className="text-cyan-300" />
@@ -237,13 +277,10 @@ export default function ProfilePage() {
                   <option value="vibrant">Vibrant</option>
                 </select>
               </label>
-              <label className="grid gap-1 text-sm font-bold text-slate-700">
-                Profile Icon Initials
-                <input value={profile.avatar} onChange={onInput('avatar')} maxLength={3} className="rounded-2xl border-slate-200" />
-              </label>
               <label className="grid gap-1 text-sm font-bold text-slate-700 md:col-span-2">
                 Profile Image
-                <input type="file" accept="image/*" onChange={onAvatarUpload} className="rounded-2xl border border-slate-200 bg-white p-3" />
+                <input type="file" accept="image/*" onChange={(event) => void onAvatarUpload(event)} disabled={avatarBusy} className="rounded-2xl border border-slate-200 bg-white p-3 disabled:opacity-60" />
+                {avatarMessage ? <span className="text-xs font-bold text-slate-500">{avatarMessage}</span> : null}
               </label>
               <button
                 type="button"

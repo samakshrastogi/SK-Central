@@ -4,6 +4,7 @@ import { Activity, ExternalLink, FileUp, Pencil, Plus, Search, ShieldCheck, Tras
 import { api } from '@/services/api';
 import { useApplicationStore } from '@/store/applicationStore';
 import type { ApplicationDocumentation, ManagedApplication, ProjectStatus } from '@/types';
+import { formatDate } from '@/utils/formatDate';
 
 interface ApplicationForm {
   name: string;
@@ -269,7 +270,7 @@ export default function AdminPage() {
               <article key={audit._id} className="rounded-2xl border border-slate-900/10 bg-white/75 p-4 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="rounded-full bg-cyan-100 px-2 py-1 text-[0.68rem] font-black text-cyan-800">{audit.action.replaceAll('_', ' ')}</span>
-                  <time className="text-[0.7rem] font-bold text-slate-500">{new Date(audit.createdAt).toLocaleString()}</time>
+                  <time className="text-[0.7rem] font-bold text-slate-500">{formatDate(audit.createdAt)}</time>
                 </div>
                 <h3 className="mt-3 font-black text-slate-900">{audit.metadata?.resourceName ?? audit.targetUserId?.name ?? 'System'}</h3>
                 <p className="mt-1 break-all text-xs font-semibold text-slate-500">{audit.actorUserId?.name ?? 'System'} · {audit.actorUserId?.email ?? 'Automated'}</p>
@@ -282,7 +283,7 @@ export default function AdminPage() {
               <thead className="sticky top-0 bg-white/95 font-black uppercase tracking-wide text-slate-500 backdrop-blur"><tr><th className="px-3 py-3">Date & time</th><th className="px-3 py-3">Admin</th><th className="px-3 py-3">Action</th><th className="px-3 py-3">Changed item</th><th className="px-3 py-3">Details</th></tr></thead>
               <tbody>{audits.length ? audits.map((audit) => (
                 <tr key={audit._id} className="border-t border-slate-900/5 align-top">
-                  <td className="whitespace-nowrap px-3 py-3 font-bold text-slate-500">{new Date(audit.createdAt).toLocaleString()}</td>
+                  <td className="whitespace-nowrap px-3 py-3 font-bold text-slate-500">{formatDate(audit.createdAt)}</td>
                   <td className="px-3 py-3"><strong className="block text-slate-800">{audit.actorUserId?.name ?? 'System'}</strong><span className="text-slate-500">{audit.actorUserId?.email ?? 'Automated'}</span></td>
                   <td className="px-3 py-3"><span className="rounded-full bg-cyan-100 px-2 py-1 font-black text-cyan-800">{audit.action.replaceAll('_', ' ')}</span></td>
                   <td className="px-3 py-3 font-bold text-slate-700">{audit.metadata?.resourceName ?? audit.targetUserId?.name ?? 'System'}</td>

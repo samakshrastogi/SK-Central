@@ -4,7 +4,7 @@ import { IdentityActivityModel, IdentityAuditLogModel, IdentityOtpModel, Identit
 import { sendOtpEmail } from '@/services/mail.service.js';
 import { createOpaqueToken, hashPassword, hashToken, signAppToken, verifyPassword } from '@/services/token.service.js';
 
-const publicUserFields = '_id email name role permissions avatarUrl avatarInitials disabledAt';
+const publicUserFields = '_id email name role permissions avatarUrl avatarInitials disabledAt createdAt';
 type IdentityUserDocument = {
   _id: unknown;
   email: string;
@@ -250,7 +250,7 @@ export async function getSession(req: Request) {
   if (!session) return null;
   session.lastSeenAt = new Date();
   await session.save();
-  const user = session.userId as unknown as { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; disabledAt?: Date };
+  const user = session.userId as unknown as { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; disabledAt?: Date; createdAt?: Date };
   if (user.disabledAt) return null;
   return { session, user: getPublicUser(user) };
 }
@@ -374,7 +374,7 @@ export async function getRememberedIdentityRecords(input: { emails?: string[] })
   }));
 }
 
-export function getPublicUser(user: { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null }) {
+export function getPublicUser(user: { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; createdAt?: Date }) {
   return {
     id: String(user._id),
     email: user.email,
@@ -382,7 +382,8 @@ export function getPublicUser(user: { _id: unknown; email: string; name: string;
     role: user.role === 'student' ? 'user' : user.role,
     permissions: user.permissions ?? [],
     avatarUrl: user.avatarUrl ?? '',
-    avatarInitials: user.avatarInitials ?? ''
+    avatarInitials: user.avatarInitials ?? '',
+    createdAt: user.createdAt?.toISOString()
   };
 }
 

@@ -86,7 +86,6 @@ interface ApplicationStore {
     email: string;
     location: string;
     bio: string;
-    avatar: string;
     avatarUrl?: string;
     theme: 'light' | 'soft' | 'vibrant';
   };
@@ -95,6 +94,7 @@ interface ApplicationStore {
   updateApplication: (application: ManagedApplication) => Promise<void>;
   deleteApplication: (id: string) => Promise<void>;
   updateProfile: (profile: Partial<ApplicationStore['profile']>) => void;
+  saveProfileImage: (avatarUrl: string) => Promise<void>;
 }
 
 const toProjectPayload = (application: ManagedApplication) => ({
@@ -128,7 +128,6 @@ export const useApplicationStore = create<ApplicationStore>()(
         email: '',
         location: 'India',
         bio: '',
-        avatar: '',
         avatarUrl: '',
         theme: 'light'
       },
@@ -170,29 +169,26 @@ export const useApplicationStore = create<ApplicationStore>()(
         set((state) => ({ applications: state.applications.filter((item) => item.id !== id) }));
       },
       updateProfile: (profile) => {
-        set((state) => ({
-          profile: { ...state.profile, ...profile }
-        }));
-        const current = get().profile;
-        const payload: { name?: string; avatarInitials?: string; avatarUrl?: string } = {};
-        if (typeof profile.name === 'string') payload.name = profile.name;
-        if (typeof profile.avatar === 'string') payload.avatarInitials = profile.avatar;
-        if (typeof profile.avatarUrl === 'string') payload.avatarUrl = profile.avatarUrl;
-        if (Object.keys(payload).length) {
-          void api.patch('/auth/profile', payload).then((response) => {
+        set((state) => ({ profile: { ...state.profile, ...profile } }));
+        if (typeof profile.name === 'string') {
+          void api.patch('/auth/profile', { name: profile.name }).then((response) => {
             const user = response.data.data.user;
-            if (user) {
-              useAuthStore.setState({ user });
-              set((state) => ({ profile: { ...state.profile, name: user.name ?? current.name, avatar: user.avatarInitials ?? current.avatar, avatarUrl: user.avatarUrl ?? current.avatarUrl } }));
-            }
+            if (user) useAuthStore.setState({ user });
           }).catch(() => undefined);
         }
+      },
+      saveProfileImage: async (avatarUrl) => {
+        const response = await api.patch('/auth/profile', { avatarUrl });
+        const user = response.data.data.user;
+        if (!user) throw new Error('Profile image was not saved');
+        useAuthStore.setState({ user });
+        set((state) => ({ profile: { ...state.profile, avatarUrl: user.avatarUrl ?? '' } }));
       }
     }),
     {
       name: 'sk-central-applications',
       version: 5,
-      partialize: (state) => ({ profile: state.profile })
+      partialize: (state) => ({ profile: { ...state.profile, avatarUrl: '' } })
     }
   )
 );

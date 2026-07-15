@@ -27,7 +27,7 @@ export const listNotifications: RequestHandler = async (req, res) => {
     group: notification.group,
     unread: !notification.readBy?.includes(userId),
     targetUrl: typeof notification.metadata?.targetUrl === 'string' ? notification.metadata.targetUrl : '/admin',
-    createdAt: notification.createdAt.toLocaleString()
+    createdAt: notification.createdAt.toISOString()
   })));
 };
 

@@ -10,7 +10,7 @@ const suggestedPrompts = [
   'Summarize live SK Central applications',
   'List live applications by status',
   'Which application was updated most recently?',
-  'What technologies do the applications use?'
+  'Which SK application should I use for my goal?'
 ];
 
 const initialMessages = [
@@ -27,6 +27,7 @@ export function FloatingAssistant() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState(initialMessages);
   const [typing, setTyping] = useState(false);
+  const [developerOpen, setDeveloperOpen] = useState(false);
 
   const send = async (value = input) => {
     if (!value.trim()) return;
@@ -66,16 +67,26 @@ export function FloatingAssistant() {
       >
         <Bot size={24} />
       </button>
-      <a
-        href="https://www.linkedin.com/in/samaksh-rastogi-9638b9254/"
-        target="_blank"
-        rel="noreferrer"
-        className="fixed bottom-20 right-3 z-30 inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-slate-950 shadow-[0_20px_50px_rgba(15,23,42,0.16)] sm:bottom-4 sm:right-5"
-        aria-label="Developed by Samaksh Rastogi on LinkedIn"
-      >
-        <BadgeCheck size={22} className="text-cyan-600" />
-        <span className="whitespace-nowrap text-sm font-black">Developed by <span className="text-emerald-600 underline decoration-2 underline-offset-2">Samaksh Rastogi</span></span>
-      </a>
+      <div className="group fixed bottom-20 right-3 z-30 flex items-center justify-end sm:bottom-4 sm:right-5">
+        <a
+          href="https://www.linkedin.com/in/samaksh-rastogi-9638b9254/"
+          target="_blank"
+          rel="noreferrer"
+          className={`${developerOpen ? 'inline-flex' : 'hidden group-hover:inline-flex group-focus-within:inline-flex'} items-center rounded-l-2xl bg-white py-3 pl-4 pr-2 text-slate-950 shadow-[0_20px_50px_rgba(15,23,42,0.16)]`}
+          aria-label="Samaksh Rastogi on LinkedIn"
+        >
+          <span className="whitespace-nowrap text-sm font-black">Developed by <span className="text-emerald-600 underline decoration-2 underline-offset-2">Samaksh Rastogi</span></span>
+        </a>
+        <button
+          type="button"
+          onClick={() => setDeveloperOpen((current) => !current)}
+          className={`${developerOpen ? 'rounded-r-2xl' : 'rounded-2xl group-hover:rounded-l-none group-focus-within:rounded-l-none'} grid h-12 w-12 place-items-center bg-white text-cyan-600 shadow-[0_20px_50px_rgba(15,23,42,0.16)] transition hover:text-cyan-700`}
+          aria-label={developerOpen ? 'Hide developer information' : 'Show developer information'}
+          aria-expanded={developerOpen}
+        >
+          <BadgeCheck size={23} />
+        </button>
+      </div>
       <AnimatePresence>
         {open ? (
           <motion.div

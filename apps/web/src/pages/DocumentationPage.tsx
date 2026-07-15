@@ -28,7 +28,7 @@ export default function DocumentationPage() {
   };
 
   return (
-    <div className="grid h-full min-h-0 max-h-full gap-2 overflow-hidden lg:grid-cols-[240px_1fr]">
+    <div className="grid h-[calc(100dvh-5.5rem)] min-h-0 max-h-[calc(100dvh-5.5rem)] gap-2 overflow-hidden lg:grid-cols-[220px_1fr]">
       <aside className="glass sticky top-0 h-full min-h-0 self-start overflow-hidden rounded-[1.25rem] p-2.5">
         <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/80 px-3 py-2">
           <Search size={16} className="text-slate-400" />
@@ -45,7 +45,7 @@ export default function DocumentationPage() {
               key={app.id}
               type="button"
               onClick={() => selectApp(app.slug)}
-              className={`w-full rounded-xl p-2.5 text-left transition ${activeApp?.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
+              className={`w-full rounded-xl px-2.5 py-2 text-left transition ${activeApp?.slug === app.slug ? 'bg-slate-950 text-white shadow-lg' : 'bg-white/60 text-slate-700 hover:bg-white'}`}
             >
               <strong className="block text-sm">{app.name}</strong>
               <span className="text-xs opacity-75">{app.docs.length} documentation file{app.docs.length === 1 ? '' : 's'}</span>
@@ -64,7 +64,7 @@ export default function DocumentationPage() {
           ) : activeDoc.type === 'md' ? (
             <MarkdownPreview content={activeDoc.content ?? ''} platformName={activeApp.name} />
           ) : activeDoc.type === 'pdf' && activeDoc.url ? (
-            <iframe title={activeDoc.name} src={activeDoc.url} className="h-[620px] w-full rounded-2xl border border-slate-900/10 bg-white" />
+            <iframe title={activeDoc.name} src={activeDoc.url} className="h-full min-h-[420px] w-full rounded-2xl border border-slate-900/10 bg-white" />
           ) : (
             <div className="rounded-2xl bg-slate-50 p-5 text-sm leading-6 text-slate-600">
               <strong className="block text-slate-950">Document preview is being prepared.</strong>

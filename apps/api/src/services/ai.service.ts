@@ -59,9 +59,13 @@ export class AIService {
       applicationCount: publicContext.length,
       applications: publicContext
     });
-    const fallbackContent = `I found ${publicContext.length} applications in the live SK Central catalog:\n\n${publicContext
-      .map((project) => `- **${project.name}** (${project.status}): ${project.description}`)
-      .join('\n')}\n\nAsk about a specific application for details available in this catalog.`;
+    const fallbackContent = `I found ${publicContext.length} applications in the live SK Central catalog:
+
+${publicContext
+      .map((project) => `- **${project.name}** (${project.status}): ${project.description}${project.launchUrl ? ` — [Open application](${project.launchUrl})` : ''}`)
+      .join('\n')}
+
+Tell me what you want to accomplish and I can recommend the best available SK application from this live catalog.`;
 
     if (!env.GEMINI_API_KEY) {
       return {
@@ -73,7 +77,7 @@ export class AIService {
     }
 
     const systemInstruction =
-      'You are the SK Central public catalog assistant. Answer only from the live public application context provided with this request. Never expose or infer admin pages, users, email lists, roles, permissions, sessions, audit logs, credentials, secrets, tokens, private configuration, or database details. If the answer is not present in the context, say that SK Central does not have that information available. Keep answers concise and identify that the information comes from the live SK Central catalog.';
+      'You are the SK Central public catalog assistant. Answer only from the live public application context fetched for this request. Never expose or infer admin pages, users, email lists, roles, permissions, sessions, audit logs, credentials, secrets, tokens, private configuration, or database details. When the user describes a goal, recommend one to three suitable available applications, explain why each matches, tell the user how to use it based only on published features, and include its launch URL when available. Consider status before recommending an application and clearly identify anything that is not live. If the answer is not present in the context, say that SK Central does not have that information available. Keep answers concise and state that recommendations come from the live SK Central catalog.';
 
     for (const model of providerModels()) {
       const response = await fetch(

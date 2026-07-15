@@ -9,6 +9,7 @@ export interface CentralUser {
   permissions: string[];
   avatarUrl?: string;
   avatarInitials?: string;
+  createdAt?: string;
 }
 
 export interface RememberedIdentity {
@@ -42,7 +43,7 @@ export const getRememberedIdentities = (): RememberedIdentity[] => {
 
 export const rememberIdentity = (user: Pick<CentralUser, 'email' | 'name' | 'avatarUrl' | 'avatarInitials'>) => {
   if (!canUseStorage()) return;
-  const identity = { email: user.email, name: user.name, avatarUrl: user.avatarUrl, avatarInitials: user.avatarInitials };
+  const identity = { email: user.email, name: user.name };
   const next = [identity, ...getRememberedIdentities().filter((item) => item.email !== user.email)].slice(0, 6);
   window.localStorage.setItem(rememberedKey, JSON.stringify(next));
 };
@@ -58,7 +59,7 @@ export const validateRememberedIdentities = async () => {
       avatarUrl: identity.avatarUrl,
       avatarInitials: identity.avatarInitials
     }));
-    window.localStorage.setItem(rememberedKey, JSON.stringify(valid));
+    window.localStorage.setItem(rememberedKey, JSON.stringify(valid.map(({ email, name }) => ({ email, name }))));
     return valid;
   } catch {
     return remembered;

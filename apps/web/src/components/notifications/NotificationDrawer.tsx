@@ -2,6 +2,7 @@ import { Bell, CheckCheck, X } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useUiStore } from '@/store/uiStore';
 import { useNotificationStore } from '@/store/notificationStore';
+import { formatDate } from '@/utils/formatDate';
 
 export function NotificationDrawer() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export function NotificationDrawer() {
             <button key={notification.id} type="button" onClick={() => { setOpen(false); void navigate(notification.targetUrl ?? '/'); }} className="w-full rounded-xl border border-slate-900/10 bg-white/70 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg">
               <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">{notification.group}</p><h3 className="mt-2 font-semibold text-slate-950">{notification.title}</h3></div>{notification.unread ? <span className="mt-1 h-2.5 w-2.5 rounded-full bg-brand-coral" /> : null}</div>
               <p className="mt-2 text-sm leading-6 text-slate-600">{notification.description}</p>
-              <time className="mt-3 block text-xs text-slate-500">{notification.createdAt}</time>
+              <time className="mt-3 block text-xs text-slate-500">{formatDate(notification.createdAt)}</time>
             </button>
           ))}
         </div>

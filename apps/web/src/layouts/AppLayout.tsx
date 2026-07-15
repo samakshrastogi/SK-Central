@@ -142,7 +142,7 @@ export function AppLayout() {
             className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-400 via-amber-300 to-rose-400 text-sm font-black text-slate-950 shadow-sm"
             aria-label="Profile"
           >
-            {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : profile.avatar || getInitials(profile.name || user.name)}
+            {user.avatarUrl || profile.avatarUrl ? <img src={user.avatarUrl || profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : getInitials(user.name || profile.name || user.email)}
           </NavLink>
         </div>
       </header>
