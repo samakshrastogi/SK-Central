@@ -1,5 +1,6 @@
-import type { RequestHandler } from 'express';
+import type { Request, RequestHandler } from 'express';
 import { env } from '@/config/env.js';
+import { getSession } from '@/services/auth.service.js';
 import { ok } from '@/utils/apiResponse.js';
 
 interface SkQuizAnalyticsResponse {
@@ -142,4 +143,65 @@ export const getConnectedApplicationAnalytics: RequestHandler = async (req, res)
   } catch (error) {
     ok(res, { connected: false, status: 0, source: url, data: null, message: error instanceof Error ? error.message : `Unable to reach ${config.label}.` });
   }
+};
+
+const mailpilotApprovalHeaders = (user: { id: string; email: string; name: string }) => ({
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+  'x-sk-central-token': env.SK_QUIZ_SERVICE_TOKEN ?? '',
+  'x-sk-central-user-id': user.id,
+  'x-sk-central-user-email': user.email,
+  'x-sk-central-user-name': user.name
+});
+
+const requireCentralAdmin = async (req: Request) => {
+  const current = await getSession(req);
+  if (!current || current.user.role !== 'admin') return null;
+  return current.user;
+};
+
+export const getSkMailpilotApprovalRequests: RequestHandler = async (req, res) => {
+  const user = await requireCentralAdmin(req);
+  if (!user) {
+    res.status(403).json({ success: false, message: 'SK Central administrator access is required.' });
+    return;
+  }
+  if (!env.SK_QUIZ_SERVICE_TOKEN) {
+    res.status(503).json({ success: false, message: 'The shared integration service token is not configured.' });
+    return;
+  }
+  const url = `${trimSlash(env.SK_MAILPILOT_API_URL)}/mail-access/central`;
+  const response = await fetch(url, { headers: mailpilotApprovalHeaders(user) });
+  const body = await response.json().catch(() => null) as { data?: unknown; message?: string; error?: string } | null;
+  if (!response.ok) {
+    res.status(response.status).json({ success: false, message: body?.message ?? body?.error ?? 'Unable to load MailPilot approval requests.' });
+    return;
+  }
+  ok(res, { requests: Array.isArray(body?.data) ? body.data : [] });
+};
+
+export const manageSkMailpilotApproval: RequestHandler = async (req, res) => {
+  const user = await requireCentralAdmin(req);
+  if (!user) {
+    res.status(403).json({ success: false, message: 'SK Central administrator access is required.' });
+    return;
+  }
+  if (!env.SK_QUIZ_SERVICE_TOKEN) {
+    res.status(503).json({ success: false, message: 'The shared integration service token is not configured.' });
+    return;
+  }
+  const decision = req.params.decision;
+  if (decision !== 'approve' && decision !== 'reject') {
+    res.status(400).json({ success: false, message: 'Decision must be approve or reject.' });
+    return;
+  }
+  const requestId = encodeURIComponent(String(req.params.requestId ?? ''));
+  const url = `${trimSlash(env.SK_MAILPILOT_API_URL)}/mail-access/central/${requestId}/${decision}`;
+  const response = await fetch(url, { method: 'POST', headers: mailpilotApprovalHeaders(user), body: JSON.stringify({}) });
+  const body = await response.json().catch(() => null) as { data?: unknown; message?: string; error?: string } | null;
+  if (!response.ok) {
+    res.status(response.status).json({ success: false, message: body?.message ?? body?.error ?? `Unable to ${decision} request.` });
+    return;
+  }
+  ok(res, { request: body?.data ?? null }, `MailPilot request ${decision === 'approve' ? 'approved' : 'rejected'}.`);
 };

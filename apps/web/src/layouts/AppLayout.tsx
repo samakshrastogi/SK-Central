@@ -146,7 +146,7 @@ export function AppLayout() {
           </NavLink>
         </div>
       </header>
-      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', isViewportPage ? 'h-[calc(100dvh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-4rem)] pt-3')}>
+      <main className={cn('mx-auto max-w-[1600px] px-3 sm:px-5', isViewportPage ? 'h-[calc(100dvh-3.5rem)] overflow-hidden py-3' : 'min-h-[calc(100vh-4rem)] pb-28 pt-3 sm:pb-24')}>
         <Outlet />
       </main>
       <nav

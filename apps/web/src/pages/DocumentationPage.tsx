@@ -1,5 +1,5 @@
-import { FileText, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronDown, FileText, Menu } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { MarkdownPreview } from '@/components/documentation/MarkdownPreview';
 import { useApplicationStore } from '@/store/applicationStore';
@@ -10,37 +10,52 @@ export default function DocumentationPage() {
   const initial = params.get('app') ?? applications[0]?.slug;
   const [activeSlug, setActiveSlug] = useState(initial);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const activeApp = applications.find((app) => app.slug === activeSlug) ?? applications[0];
   const activeDoc = activeApp?.docs.find((doc) => doc.id === activeDocId) ?? activeApp?.docs[0];
-  const filtered = useMemo(() => {
-    const normalized = query.toLowerCase();
-    return applications.filter((app) =>
-      [app.name, app.description, app.category, ...app.technologies, ...app.docs.map((doc) => doc.name)].some((value) =>
-        value.toLowerCase().includes(normalized)
-      )
-    );
-  }, [applications, query]);
+  useEffect(() => {
+    const closeOutside = (event: PointerEvent) => {
+      if (mobileMenuOpen && !mobileMenuRef.current?.contains(event.target as Node)) setMobileMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [mobileMenuOpen]);
+
 
   const selectApp = (slug: string) => {
     setActiveSlug(slug);
     setActiveDocId(null);
+    setMobileMenuOpen(false);
   };
 
   return (
-    <div className="grid h-[calc(100dvh-5.5rem)] min-h-0 max-h-[calc(100dvh-5.5rem)] gap-2 overflow-hidden lg:grid-cols-[220px_1fr]">
-      <aside className="glass sticky top-0 h-full min-h-0 self-start overflow-hidden rounded-[1.25rem] p-2.5">
-        <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/80 px-3 py-2">
-          <Search size={16} className="text-slate-400" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search docs"
-            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-0"
-          />
+    <div className="grid h-[calc(100dvh-5.5rem)] min-h-0 max-h-[calc(100dvh-5.5rem)] grid-rows-[auto_1fr] gap-2 overflow-hidden lg:grid-cols-[220px_1fr] lg:grid-rows-1">
+      <div ref={mobileMenuRef} className="glass relative z-20 rounded-[1.1rem] p-2 lg:hidden">
+        <button type="button" onClick={() => setMobileMenuOpen((open) => !open)} className="flex w-full items-center gap-2 rounded-xl bg-white/85 px-3 py-2 text-left text-sm font-black text-slate-900" aria-expanded={mobileMenuOpen}>
+          <Menu size={17} />
+          <span className="min-w-0 flex-1 truncate">{activeApp?.name ?? 'Applications'}</span>
+          <ChevronDown size={16} className={`transition ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {mobileMenuOpen ? (
+          <div className="absolute inset-x-2 top-[calc(100%+0.25rem)] max-h-[55dvh] space-y-1 overflow-y-auto rounded-2xl border border-slate-900/10 bg-white p-2 shadow-2xl">
+            {applications.map((app) => (
+              <button key={app.id} type="button" onClick={() => selectApp(app.slug)} className={`w-full rounded-xl px-3 py-2 text-left ${activeApp?.slug === app.slug ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-700'}`}>
+                <strong className="block text-sm">{app.name}</strong>
+                <span className="text-xs opacity-70">{app.docs.length} documentation file{app.docs.length === 1 ? '' : 's'}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <aside className="glass sticky top-0 hidden h-full min-h-0 self-start overflow-hidden rounded-[1.25rem] p-2.5 lg:block">
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-900/10 bg-white/80 px-3 py-2 text-sm font-black text-slate-700">
+          <FileText size={16} className="text-cyan-700" />
+          Applications
         </div>
         <div className="scrollbar-hidden mt-2 h-[calc(100%-3rem)] space-y-1.5 overflow-y-auto">
-          {filtered.map((app) => (
+          {applications.map((app) => (
             <button
               key={app.id}
               type="button"

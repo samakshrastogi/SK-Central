@@ -187,11 +187,11 @@ export default function LoginPage() {
   };
 
   return (
-    <main ref={rootRef} className="relative grid min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.28),transparent_32%),linear-gradient(135deg,#f8fafc,#eef6ff_48%,#fff7ed)] px-4 py-8">
+    <main ref={rootRef} className="relative grid min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.28),transparent_32%),linear-gradient(135deg,#f8fafc,#eef6ff_48%,#fff7ed)] px-3 py-3 sm:px-4 sm:py-8">
       <div data-auth-orbit className="pointer-events-none absolute -left-28 top-12 h-72 w-72 rounded-full border border-cyan-300/40" />
       <div data-auth-orbit className="pointer-events-none absolute -right-24 bottom-10 h-80 w-80 rounded-full border border-amber-300/40" />
       <div className="mx-auto grid w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.9fr_1fr]">
-        <section data-auth-panel className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-7 text-white shadow-[0_30px_120px_rgba(15,23,42,0.32)]">
+        <section data-auth-panel className="order-2 relative overflow-hidden rounded-[2rem] bg-slate-950 p-7 text-white shadow-[0_30px_120px_rgba(15,23,42,0.32)] lg:order-1">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-slate-950">
             <Sparkles size={14} /> SK Auth
           </span>
@@ -208,7 +208,7 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <form onSubmit={submit} data-auth-panel className="glass w-full rounded-[2rem] p-5 shadow-2xl sm:p-7">
+        <form onSubmit={submit} data-auth-panel className="glass order-1 w-full rounded-[2rem] p-5 shadow-2xl sm:p-7 lg:order-2">
           <div className="mb-6 flex items-start gap-3">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-slate-950 text-white"><ShieldCheck size={22} /></span>
             <div>

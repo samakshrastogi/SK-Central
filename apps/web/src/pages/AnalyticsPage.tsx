@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart3, BookOpenCheck, Brain, Clock, FileQuestion, Gauge, GraduationCap, LogIn, MousePointerClick, Target, UsersRound } from 'lucide-react';
 import { api } from '@/services/api';
+import { MailpilotApprovalManager } from '@/components/analytics/MailpilotApprovalManager';
 import { useApplicationStore } from '@/store/applicationStore';
 
 interface IdentityUserRow {
@@ -411,6 +412,7 @@ export default function AnalyticsPage() {
       ) : (
         <ConnectedApplicationPanel project={activeProject} state={connectedInsights[activeProject]} />
       )}
+      {activeProject === 'sk-mailpilot' ? <MailpilotApprovalManager /> : null}
       {activeModal ? <AnalyticsModal {...modalMap[activeModal]} onClose={() => setActiveModal(null)} /> : null}
     </div>
   );
