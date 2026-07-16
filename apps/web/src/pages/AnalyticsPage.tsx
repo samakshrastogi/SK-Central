@@ -3,6 +3,8 @@ import { BarChart3, BookOpenCheck, Brain, Clock, FileQuestion, Gauge, Graduation
 import { api } from '@/services/api';
 import { MailpilotApprovalManager } from '@/components/analytics/MailpilotApprovalManager';
 import { useApplicationStore } from '@/store/applicationStore';
+import { useAuthStore } from '@/store/authStore';
+import { isReadOnlyAdmin } from '@/utils/adminAccess';
 
 interface IdentityUserRow {
   _id: string;
@@ -105,6 +107,8 @@ export default function AnalyticsPage() {
   const [liveTick, setLiveTick] = useState(Date.now());
   const sessionStartedAt = useRef(Date.now());
   const initialActiveSeconds = useRef<number | null>(null);
+  const currentUser = useAuthStore((state) => state.user);
+  const readOnly = isReadOnlyAdmin(currentUser);
   const applications = useApplicationStore((state) => state.applications);
   const projectTabs = useMemo(() => {
     const slugs = ['sk-central', 'sk-quiz', 'sk-mailpilot', 'sk-chat', 'sk-mediaflow', ...applications.map((app) => app.slug)]
@@ -410,7 +414,7 @@ export default function AnalyticsPage() {
       ) : activeProject === 'sk-quiz' ? (
         <QuizIntelligencePanel state={skQuiz} />
       ) : (
-        <ConnectedApplicationPanel project={activeProject} state={connectedInsights[activeProject]} />
+        <ConnectedApplicationPanel project={activeProject} state={connectedInsights[activeProject]} readOnly={readOnly} />
       )}
       {activeModal ? <AnalyticsModal {...modalMap[activeModal]} onClose={() => setActiveModal(null)} /> : null}
     </div>
@@ -515,13 +519,13 @@ function QuizIntelligencePanel({ state }: { state: SkQuizIntegrationState }) {
   </section>;
 }
 
-function ConnectedApplicationPanel({ project, state }: { project: string; state?: SkQuizIntegrationState }) {
+function ConnectedApplicationPanel({ project, state, readOnly }: { project: string; state?: SkQuizIntegrationState; readOnly: boolean }) {
   const root = getRecord(state?.data);
   const connected = Boolean(state?.connected);
   if (project === "sk-mailpilot") {
     const summary = getRecord(root.summary); const health = getRecord(root.health);
     const metrics: CompactMetric[] = [{ label: "Users", value: pickNumber(summary, ["users"], 0), hint: "MailPilot accounts" }, { label: "Connected mailboxes", value: pickNumber(summary, ["activeMailboxes"], 0), hint: "Active Gmail connections" }, { label: "Processed emails", value: pickNumber(summary, ["processedEmails"], 0), hint: "Indexed active mail" }, { label: "Pending replies", value: pickNumber(summary, ["pendingReplies"], 0), hint: "Messages needing action" }, { label: "Overdue replies", value: pickNumber(summary, ["overdueReplies"], 0), hint: "Reply SLA at risk" }, { label: "Sync health", value: `${pickNumber(health, ["syncSuccessRate"], 0)}%`, hint: "Successful mailbox syncs" }];
-    return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK MailPilot analytics."} title="SK MailPilot operations" subtitle="Live mailbox adoption, processing throughput, reply workload, scheduling, and synchronization health." action={<MailpilotApprovalManager />} /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] bg-white/60 p-4"><h3 className="text-sm font-black">Email categories</h3><div className="mt-3"><MiniBars rows={getRows(root.categoryDistribution)} valueKey="value" /></div></section><section className="grid grid-cols-2 gap-2 rounded-[1.3rem] bg-white/60 p-4">{[["Recent 7 days", "recentEmails"], ["High priority", "highPriority"], ["Scheduled", "scheduled"], ["Sent", "sent"], ["Failed", "failed"], ["Pending approvals", "pendingApprovals"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><strong className="block text-lg">{pickNumber(summary, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</section></div></section>;
+    return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK MailPilot analytics."} title="SK MailPilot operations" subtitle="Live mailbox adoption, processing throughput, reply workload, scheduling, and synchronization health." action={<MailpilotApprovalManager readOnly={readOnly} />} /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] bg-white/60 p-4"><h3 className="text-sm font-black">Email categories</h3><div className="mt-3"><MiniBars rows={getRows(root.categoryDistribution)} valueKey="value" /></div></section><section className="grid grid-cols-2 gap-2 rounded-[1.3rem] bg-white/60 p-4">{[["Recent 7 days", "recentEmails"], ["High priority", "highPriority"], ["Scheduled", "scheduled"], ["Sent", "sent"], ["Failed", "failed"], ["Pending approvals", "pendingApprovals"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><strong className="block text-lg">{pickNumber(summary, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</section></div></section>;
   }
   if (project === "sk-chat") {
     const users = getRecord(root.users); const messages = getRecord(root.messages); const chats = getRecord(root.chats); const communities = getRecord(root.communities); const sessions = getRecord(root.sessions); const charts = getRecord(root.charts);

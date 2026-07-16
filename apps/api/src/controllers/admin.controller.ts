@@ -3,8 +3,10 @@ import mongoose from 'mongoose';
 import { ProjectModel } from '@/models/project.model.js';
 import { IdentityActivityModel, IdentitySessionModel, IdentityUserModel } from '@/models/identity.model.js';
 import { ok } from '@/utils/apiResponse.js';
+import { requireAdminReadAccess } from '@/services/auth.service.js';
 
-export const getAdminOverview: RequestHandler = async (_req, res) => {
+export const getAdminOverview: RequestHandler = async (req, res) => {
+  await requireAdminReadAccess(req);
   const [totalUsers, projects, activeSessions, loginEvents, activeTime] = await Promise.all([
     IdentityUserModel.countDocuments({ disabledAt: { $exists: false } }),
     ProjectModel.find().lean(),

@@ -12,6 +12,7 @@ import { getInitials, useAuthStore } from '@/store/authStore';
 import { useApplicationStore } from '@/store/applicationStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { cn } from '@/utils/cn';
+import { hasAdminReadAccess } from '@/utils/adminAccess';
 
 export function AppLayout() {
   const dockRef = useRef<HTMLElement>(null);
@@ -24,7 +25,7 @@ export function AppLayout() {
   const { user, initialized, loadSession } = useAuthStore();
   const location = useLocation();
   const unread = notificationItems.filter((notification) => notification.unread).length;
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = hasAdminReadAccess(user);
   const visibleNavigation = bottomNavigation.filter((item) => isAdmin || !['/admin', '/analytics'].includes(item.href));
   const isViewportPage = location.pathname.startsWith('/documentation');
 

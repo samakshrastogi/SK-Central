@@ -5,6 +5,8 @@ import { api } from '@/services/api';
 import { useApplicationStore } from '@/store/applicationStore';
 import type { ApplicationDocumentation, ManagedApplication, ProjectStatus } from '@/types';
 import { formatDate } from '@/utils/formatDate';
+import { useAuthStore } from '@/store/authStore';
+import { isReadOnlyAdmin } from '@/utils/adminAccess';
 
 interface ApplicationForm {
   name: string;
@@ -21,8 +23,20 @@ interface AdminUser {
   name: string;
   email: string;
   role: 'user' | 'admin';
+  permissions?: string[];
+  temporaryAdminUntil?: string;
 }
 
+type AdminAccessValue = 'user' | 'temporary-24' | 'temporary-168' | 'temporary-720' | 'admin';
+
+const getAdminAccessValue = (user: AdminUser): AdminAccessValue => {
+  if (user.role === 'admin') return 'admin';
+  if (!user.temporaryAdminUntil || new Date(user.temporaryAdminUntil).getTime() <= Date.now()) return 'user';
+  const hoursLeft = (new Date(user.temporaryAdminUntil).getTime() - Date.now()) / 3_600_000;
+  if (hoursLeft > 168) return 'temporary-720';
+  if (hoursLeft > 24) return 'temporary-168';
+  return 'temporary-24';
+};
 interface AuditChange {
   field: string;
   label: string;
@@ -80,6 +94,8 @@ export default function AdminPage() {
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
   const [applicationError, setApplicationError] = useState('');
   const [userAccessOpen, setUserAccessOpen] = useState(false);
+  const currentUser = useAuthStore((state) => state.user);
+  const readOnly = isReadOnlyAdmin(currentUser);
   const applications = useApplicationStore((state) => state.applications);
   const addApplication = useApplicationStore((state) => state.addApplication);
   const updateApplication = useApplicationStore((state) => state.updateApplication);
@@ -124,6 +140,7 @@ export default function AdminPage() {
   };
 
   const onSubmit = async (values: ApplicationForm) => {
+    if (readOnly) return;
     setApplicationError('');
     const slug = values.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const existing = applications.find((applicationItem) => applicationItem.id === editingId);
@@ -184,11 +201,11 @@ export default function AdminPage() {
     setApplicationModalOpen(true);
   };
 
-  const setRole = async (userId: string, role: AdminUser['role']) => {
-    await api.post('/auth/users/role', { userId, role });
+  const setAccess = async (userId: string, access: AdminAccessValue) => {
+    const temporaryAdminHours = access.startsWith('temporary-') ? Number(access.split('-')[1]) : undefined;
+    await api.post('/auth/users/role', { userId, role: access === 'admin' ? 'admin' : 'user', temporaryAdminHours });
     await loadUsers();
   };
-
   const filteredApplications = useMemo(() => {
     const normalized = applicationQuery.toLowerCase();
     return applications.filter((application) =>
@@ -212,16 +229,17 @@ export default function AdminPage() {
             <h1 className="mt-1 text-2xl font-black text-slate-950">Smart Control Center</h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">Manage applications, roles, and admin history from one compact surface.</p>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          {readOnly ? <span className="rounded-full bg-amber-100 px-4 py-2 text-xs font-black text-amber-800">Temporary read-only admin</span> : <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button type="button" onClick={startAdd} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white sm:w-auto">
               <Plus size={16} /> Add Application
             </button>
             <button type="button" onClick={() => setUserAccessOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 shadow-sm sm:w-auto">
-              <UserRoundCog size={16} /> Make Admin
+              <UserRoundCog size={16} /> Manage Admin Access
             </button>
-          </div>
+          </div>}
         </div>
       </section>
+      {readOnly ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Read-only access is active until {currentUser?.temporaryAdminUntil ? formatDate(currentUser.temporaryAdminUntil) : 'the assigned expiry'}. You can review applications, analytics, and activity history, but cannot make changes.</p> : null}
 
       <section className="grid gap-3">
         <div className="glass rounded-[1.5rem] p-4">
@@ -245,10 +263,10 @@ export default function AdminPage() {
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-900/5 pt-3">
                   <a href={application.liveLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-black text-cyan-700">Open application <ExternalLink size={12} /></a>
-                  <div className="flex gap-2">
+                  {!readOnly ? <div className="flex gap-2">
                     <button type="button" onClick={() => startEdit(application)} className="rounded-xl bg-cyan-100 p-2.5 text-cyan-700" aria-label={`Edit ${application.name}`}><Pencil size={15} /></button>
                     <button type="button" onClick={() => void deleteApplication(application.id).then(loadUsers)} className="rounded-xl bg-rose-100 p-2.5 text-rose-700" aria-label={`Delete ${application.name}`}><Trash2 size={15} /></button>
-                  </div>
+                  </div> : <span className="text-xs font-black text-slate-400">Read only</span>}
                 </div>
               </article>
             ))}
@@ -276,10 +294,10 @@ export default function AdminPage() {
                     <td className="px-3 py-2"><span className="rounded-full bg-cyan-100 px-2 py-1 text-[0.68rem] font-black text-cyan-700">{application.status}</span></td>
                     <td className="px-3 py-2"><a href={application.liveLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-black text-cyan-700">Open <ExternalLink size={12} /></a></td>
                     <td className="px-3 py-2">
-                      <div className="flex justify-end gap-2">
+                      {!readOnly ? <div className="flex justify-end gap-2">
                         <button type="button" onClick={() => startEdit(application)} className="rounded-xl bg-cyan-100 p-2 text-cyan-700" aria-label={`Edit ${application.name}`}><Pencil size={15} /></button>
                         <button type="button" onClick={() => void deleteApplication(application.id).then(loadUsers)} className="rounded-xl bg-rose-100 p-2 text-rose-700" aria-label={`Delete ${application.name}`}><Trash2 size={15} /></button>
-                      </div>
+                      </div> : <span className="block text-right text-xs font-black text-slate-400">Read only</span>}
                     </td>
                   </tr>
                 ))}
@@ -321,7 +339,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {applicationModalOpen ? (
+      {applicationModalOpen && !readOnly ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm" onMouseDown={closeApplicationModal}>
           <form onSubmit={handleSubmit(onSubmit)} className="glass max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] p-4" onMouseDown={(event) => event.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -357,13 +375,13 @@ export default function AdminPage() {
         </div>
       ) : null}
 
-      {userAccessOpen ? (
+      {userAccessOpen && !readOnly ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm" onMouseDown={() => setUserAccessOpen(false)}>
           <div className="glass max-h-[86vh] w-full max-w-4xl overflow-hidden rounded-[2rem]" onMouseDown={(event) => event.stopPropagation()}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/10 p-4">
               <div>
-                <h2 className="text-xl font-black text-slate-950">Make Admin</h2>
-                <p className="text-xs font-bold text-slate-500">Checked users have admin access across SK platforms.</p>
+                <h2 className="text-xl font-black text-slate-950">Manage Admin Access</h2>
+                <p className="text-xs font-bold text-slate-500">Assign permanent full access or expiring read-only access to SK Central Admin and Analytics.</p>
               </div>
               <div className="flex items-center gap-2">
                 <input value={userQuery} onChange={(event) => setUserQuery(event.target.value)} placeholder="Search users" className="h-10 rounded-2xl border-slate-200 text-sm" />
@@ -373,17 +391,17 @@ export default function AdminPage() {
             <div className="max-h-[62vh] overflow-auto">
               <table className="w-full text-left text-sm">
                 <thead className="sticky top-0 bg-white/90 text-xs font-black uppercase text-slate-500 backdrop-blur">
-                  <tr><th className="px-4 py-3">Admin</th><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email ID</th></tr>
+                  <tr><th className="px-4 py-3">Access</th><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email ID</th><th className="px-4 py-3">Expires</th></tr>
                 </thead>
                 <tbody>
                   {filteredUsers.map((user) => (
                     <tr key={user._id} className="border-t border-slate-900/5">
-                      <td className="px-4 py-3"><input type="checkbox" checked={user.role === 'admin'} onChange={(event) => void setRole(user._id, event.target.checked ? 'admin' : 'user')} className="h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-950" /></td>
+                      <td className="px-4 py-3"><select value={getAdminAccessValue(user)} onChange={(event) => void setAccess(user._id, event.target.value as AdminAccessValue)} className="rounded-xl border-slate-200 bg-white text-xs font-bold"><option value="user">Standard user</option><option value="temporary-24">Read only · 24 hours</option><option value="temporary-168">Read only · 7 days</option><option value="temporary-720">Read only · 30 days</option><option value="admin">Full admin</option></select></td>
                       <td className="px-4 py-3 font-bold text-slate-800">{user.name}</td>
-                      <td className="px-4 py-3 font-bold text-slate-600">{user.email}</td>
+                      <td className="px-4 py-3 font-bold text-slate-600">{user.email}</td><td className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-500">{user.role === 'admin' ? 'Permanent' : user.temporaryAdminUntil && new Date(user.temporaryAdminUntil).getTime() > Date.now() ? formatDate(user.temporaryAdminUntil) : '—'}</td>
                     </tr>
                   ))}
-                  {!filteredUsers.length ? <tr><td colSpan={3} className="px-4 py-6 text-sm font-bold text-slate-500">No users found.</td></tr> : null}
+                  {!filteredUsers.length ? <tr><td colSpan={4} className="px-4 py-6 text-sm font-bold text-slate-500">No users found.</td></tr> : null}
                 </tbody>
               </table>
             </div>

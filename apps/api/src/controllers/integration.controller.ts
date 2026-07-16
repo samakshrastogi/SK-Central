@@ -1,6 +1,6 @@
 import type { Request, RequestHandler } from 'express';
 import { env } from '@/config/env.js';
-import { getSession } from '@/services/auth.service.js';
+import { requireAdminReadAccess, requireAdminWriteAccess } from '@/services/auth.service.js';
 import { ok } from '@/utils/apiResponse.js';
 
 interface SkQuizAnalyticsResponse {
@@ -37,7 +37,8 @@ interface LiveAttempt {
   htmlShell: boolean;
 }
 
-export const getSkQuizAdminAnalytics: RequestHandler = async (_req, res) => {
+export const getSkQuizAdminAnalytics: RequestHandler = async (req, res) => {
+  await requireAdminReadAccess(req);
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (!env.SK_QUIZ_SERVICE_TOKEN && !env.SK_QUIZ_ADMIN_TOKEN) {
     ok(res, {
@@ -117,6 +118,7 @@ const connectedApplications: Record<ConnectedApplication, { baseUrl: string; pat
 };
 
 export const getConnectedApplicationAnalytics: RequestHandler = async (req, res) => {
+  await requireAdminReadAccess(req);
   const application = req.params.application as ConnectedApplication;
   const config = connectedApplications[application];
   if (!config) {
@@ -154,9 +156,8 @@ const mailpilotApprovalHeaders = (user: { id: string; email: string; name: strin
   'x-sk-central-user-name': user.name
 });
 
-const requireCentralAdmin = async (req: Request) => {
-  const current = await getSession(req);
-  if (!current || current.user.role !== 'admin') return null;
+const requireCentralAdmin = async (req: Request, write = false) => {
+  const current = write ? await requireAdminWriteAccess(req) : await requireAdminReadAccess(req);
   return current.user;
 };
 
@@ -181,7 +182,7 @@ export const getSkMailpilotApprovalRequests: RequestHandler = async (req, res) =
 };
 
 export const manageSkMailpilotApproval: RequestHandler = async (req, res) => {
-  const user = await requireCentralAdmin(req);
+  const user = await requireCentralAdmin(req, true);
   if (!user) {
     res.status(403).json({ success: false, message: 'SK Central administrator access is required.' });
     return;

@@ -18,7 +18,8 @@ export const IdentityUserModel = model(
       avatarInitials: String,
       emailVerifiedAt: Date,
       lastLoginAt: Date,
-      disabledAt: Date
+      disabledAt: Date,
+      temporaryAdminUntil: Date
     },
     timestamps
   )

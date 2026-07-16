@@ -7,6 +7,7 @@ export interface CentralUser {
   name: string;
   role: 'user' | 'admin';
   permissions: string[];
+  temporaryAdminUntil?: string;
   avatarUrl?: string;
   avatarInitials?: string;
   createdAt?: string;

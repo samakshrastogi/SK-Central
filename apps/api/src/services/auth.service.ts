@@ -4,7 +4,7 @@ import { IdentityActivityModel, IdentityAuditLogModel, IdentityOtpModel, Identit
 import { sendOtpEmail } from '@/services/mail.service.js';
 import { createOpaqueToken, hashPassword, hashToken, signAppToken, verifyPassword } from '@/services/token.service.js';
 
-const publicUserFields = '_id email name role permissions avatarUrl avatarInitials disabledAt createdAt';
+const publicUserFields = '_id email name role permissions avatarUrl avatarInitials disabledAt temporaryAdminUntil createdAt';
 type IdentityUserDocument = {
   _id: unknown;
   email: string;
@@ -14,6 +14,7 @@ type IdentityUserDocument = {
   avatarUrl?: string | null;
   avatarInitials?: string | null;
   disabledAt?: Date | null;
+  temporaryAdminUntil?: Date | null;
   lastLoginAt?: Date | null;
   save: () => Promise<unknown>;
 };
@@ -250,7 +251,7 @@ export async function getSession(req: Request) {
   if (!session) return null;
   session.lastSeenAt = new Date();
   await session.save();
-  const user = session.userId as unknown as { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; disabledAt?: Date; createdAt?: Date };
+  const user = session.userId as unknown as { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; disabledAt?: Date; temporaryAdminUntil?: Date; createdAt?: Date };
   if (user.disabledAt) return null;
   return { session, user: getPublicUser(user) };
 }
@@ -313,26 +314,44 @@ export async function updateIdentityProfile(req: Request, input: { name?: string
   return getPublicUser(user);
 }
 
-export async function getIdentityAnalytics(req: Request) {
+export const hasAdminReadAccess = (user: { role: string; permissions?: string[]; temporaryAdminUntil?: string }) =>
+  user.role === 'admin' || (
+    user.permissions?.includes('admin:read') === true
+    && Boolean(user.temporaryAdminUntil)
+    && new Date(user.temporaryAdminUntil as string).getTime() > Date.now()
+  );
+
+export const hasAdminWriteAccess = (user: { role: string }) => user.role === 'admin';
+
+export async function requireAdminReadAccess(req: Request) {
   const current = await getSession(req);
-  if (!current || current.user.role !== 'admin') {
-    const error = new Error('Admin access required') as Error & { statusCode?: number };
+  if (!current || !hasAdminReadAccess(current.user)) {
+    const error = new Error('Admin read access required') as Error & { statusCode?: number };
     error.statusCode = 403;
     throw error;
   }
-  const users = await IdentityUserModel.find().select('_id email name role disabledAt lastLoginAt createdAt').sort({ createdAt: 1 }).lean();
+  return current;
+}
+
+export async function requireAdminWriteAccess(req: Request) {
+  const current = await getSession(req);
+  if (!current || !hasAdminWriteAccess(current.user)) {
+    const error = new Error('Full administrator access required') as Error & { statusCode?: number };
+    error.statusCode = 403;
+    throw error;
+  }
+  return current;
+}
+
+export async function getIdentityAnalytics(req: Request) {
+  await requireAdminReadAccess(req);
+  const users = await IdentityUserModel.find().select('_id email name role permissions temporaryAdminUntil disabledAt lastLoginAt createdAt').sort({ createdAt: 1 }).lean();
   const activities = await IdentityActivityModel.find().populate('userId', '_id email name').sort({ createdAt: -1 }).limit(5000).lean();
   const audits = await IdentityAuditLogModel.find().populate('actorUserId', 'name email').populate('targetUserId', 'name email').sort({ createdAt: -1 }).limit(100).lean();
   return { users, activities, audits };
 }
-
-export async function setUserRole(req: Request, input: { userId: string; role: 'user' | 'admin' }) {
-  const current = await getSession(req);
-  if (!current || current.user.role !== 'admin') {
-    const error = new Error('Admin access required') as Error & { statusCode?: number };
-    error.statusCode = 403;
-    throw error;
-  }
+export async function setUserRole(req: Request, input: { userId: string; role: 'user' | 'admin'; temporaryAdminHours?: number }) {
+  const current = await requireAdminWriteAccess(req);
   const user = await IdentityUserModel.findById(input.userId);
   if (!user) {
     const error = new Error('User not found') as Error & { statusCode?: number };
@@ -340,13 +359,25 @@ export async function setUserRole(req: Request, input: { userId: string; role: '
     throw error;
   }
   const previousRole = user.role;
+  const previousTemporaryAdminUntil = user.temporaryAdminUntil;
+  const temporaryHours = input.role === 'user' ? Number(input.temporaryAdminHours ?? 0) : 0;
+  const hasTemporaryAccess = Number.isFinite(temporaryHours) && temporaryHours > 0;
   user.role = input.role;
-  user.permissions = input.role === 'user' ? ['apps:read'] : ['apps:read', 'apps:write', 'analytics:read', 'sessions:manage', 'users:manage'];
+  user.permissions = input.role === 'admin'
+    ? ['apps:read', 'apps:write', 'analytics:read', 'sessions:manage', 'users:manage']
+    : hasTemporaryAccess
+      ? ['apps:read', 'analytics:read', 'admin:read']
+      : ['apps:read'];
+  user.temporaryAdminUntil = hasTemporaryAccess ? new Date(Date.now() + Math.min(720, Math.max(1, temporaryHours)) * 60 * 60 * 1000) : undefined;
   await user.save();
-  await IdentityAuditLogModel.create({ actorUserId: current.user.id, targetUserId: user._id, action: 'role_changed', metadata: { previousRole, nextRole: input.role } });
+  await IdentityAuditLogModel.create({
+    actorUserId: current.user.id,
+    targetUserId: user._id,
+    action: hasTemporaryAccess ? 'temporary_admin_read_granted' : 'role_changed',
+    metadata: { previousRole, nextRole: hasTemporaryAccess ? 'temporary_readonly_admin' : input.role, previousTemporaryAdminUntil, temporaryAdminUntil: user.temporaryAdminUntil }
+  });
   return getPublicUser(user);
 }
-
 export async function revokeUser(req: Request, input: { userId: string }) {
   const current = await getSession(req);
   if (!current || current.user.role !== 'admin') {
@@ -374,16 +405,19 @@ export async function getRememberedIdentityRecords(input: { emails?: string[] })
   }));
 }
 
-export function getPublicUser(user: { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; createdAt?: Date }) {
+export function getPublicUser(user: { _id: unknown; email: string; name: string; role: 'user' | 'admin' | 'student'; permissions?: string[]; avatarUrl?: string | null; avatarInitials?: string | null; temporaryAdminUntil?: Date | null; createdAt?: Date }) {
+  const temporaryAdminUntil = user.temporaryAdminUntil?.toISOString();
+  const temporaryAdminActive = Boolean(temporaryAdminUntil) && new Date(temporaryAdminUntil as string).getTime() > Date.now();
+  const permissions = user.role === 'admin' || temporaryAdminActive ? (user.permissions ?? []) : (user.permissions ?? []).filter((permission) => permission !== 'admin:read');
   return {
     id: String(user._id),
     email: user.email,
     name: user.name,
     role: user.role === 'student' ? 'user' : user.role,
-    permissions: user.permissions ?? [],
+    permissions,
+    temporaryAdminUntil,
     avatarUrl: user.avatarUrl ?? '',
     avatarInitials: user.avatarInitials ?? '',
     createdAt: user.createdAt?.toISOString()
   };
 }
-

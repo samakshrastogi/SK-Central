@@ -3,7 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 import { ProjectService } from '@/services/project.service.js';
 import { ok, created } from '@/utils/apiResponse.js';
 import { createProjectSchema } from '@/validators/project.validator.js';
-import { getSession } from '@/services/auth.service.js';
+import { getSession, requireAdminWriteAccess } from '@/services/auth.service.js';
 import { IdentityAuditLogModel } from '@/models/identity.model.js';
 import { NotificationModel } from '@/models/notification.model.js';
 
@@ -92,6 +92,7 @@ export const getProject: RequestHandler = async (req, res) => {
 };
 
 export const createProject: RequestHandler = async (req, res) => {
+  await requireAdminWriteAccess(req);
   const input = createProjectSchema.parse(req.body);
   const project = await service.createProject(input);
   await auditProjectChange(req, 'application_created', project as unknown as Record<string, unknown>);
@@ -100,6 +101,7 @@ export const createProject: RequestHandler = async (req, res) => {
 };
 
 export const updateProject: RequestHandler = async (req, res) => {
+  await requireAdminWriteAccess(req);
   const slug = String(req.params.slug);
   const input = createProjectSchema.parse(req.body);
   const previousProject = await service.getProject(slug);
@@ -116,6 +118,7 @@ export const updateProject: RequestHandler = async (req, res) => {
 };
 
 export const deleteProject: RequestHandler = async (req, res) => {
+  await requireAdminWriteAccess(req);
   const slug = String(req.params.slug);
   const project = await service.deleteProject(slug);
   if (!project) {

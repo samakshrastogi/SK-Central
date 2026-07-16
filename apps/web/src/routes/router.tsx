@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Skeleton } from '@/components/common/Skeleton';
 import { AppLayout } from '@/layouts/AppLayout';
 import { useAuthStore } from '@/store/authStore';
+import { hasAdminReadAccess } from '@/utils/adminAccess';
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
@@ -29,7 +30,7 @@ function LazyPage({ children }: { children: ReactNode }) {
 
 function AdminOnly({ children }: { children: ReactNode }) {
   const user = useAuthStore((state) => state.user);
-  if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
+  if (!hasAdminReadAccess(user)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
