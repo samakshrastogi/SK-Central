@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart3, BookOpenCheck, Brain, Clock, FileQuestion, Gauge, GraduationCap, LogIn, MousePointerClick, Target, UsersRound } from 'lucide-react';
 import { api } from '@/services/api';
 import { MailpilotApprovalManager } from '@/components/analytics/MailpilotApprovalManager';
@@ -412,7 +412,6 @@ export default function AnalyticsPage() {
       ) : (
         <ConnectedApplicationPanel project={activeProject} state={connectedInsights[activeProject]} />
       )}
-      {activeProject === 'sk-mailpilot' ? <MailpilotApprovalManager /> : null}
       {activeModal ? <AnalyticsModal {...modalMap[activeModal]} onClose={() => setActiveModal(null)} /> : null}
     </div>
   );
@@ -458,10 +457,10 @@ function AnalyticsModal({ title, columns, rows, footer, onClose }: { title: stri
 
 interface CompactMetric { label: string; value: string | number; hint: string }
 
-function LivePanelHeader({ connected, message, title, subtitle }: { connected: boolean; message: string; title: string; subtitle: string }) {
+function LivePanelHeader({ connected, message, title, subtitle, action }: { connected: boolean; message: string; title: string; subtitle: string; action?: ReactNode }) {
   return <div className="flex flex-wrap items-start justify-between gap-3">
     <div><h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><BarChart3 size={20} /> {title}</h2><p className="mt-1 max-w-4xl text-sm font-semibold leading-6 text-slate-500">{subtitle}</p></div>
-    <span className={`rounded-full px-3 py-1 text-xs font-black ${connected ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>{connected ? "Live data" : "Connection pending"}</span>
+    <div className="flex items-center gap-2">{action}<span className={`rounded-full px-3 py-1 text-xs font-black ${connected ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>{connected ? "Live data" : "Connection pending"}</span></div>
     {!connected && message ? <p className="w-full rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">{message}</p> : null}
   </div>;
 }
@@ -522,7 +521,7 @@ function ConnectedApplicationPanel({ project, state }: { project: string; state?
   if (project === "sk-mailpilot") {
     const summary = getRecord(root.summary); const health = getRecord(root.health);
     const metrics: CompactMetric[] = [{ label: "Users", value: pickNumber(summary, ["users"], 0), hint: "MailPilot accounts" }, { label: "Connected mailboxes", value: pickNumber(summary, ["activeMailboxes"], 0), hint: "Active Gmail connections" }, { label: "Processed emails", value: pickNumber(summary, ["processedEmails"], 0), hint: "Indexed active mail" }, { label: "Pending replies", value: pickNumber(summary, ["pendingReplies"], 0), hint: "Messages needing action" }, { label: "Overdue replies", value: pickNumber(summary, ["overdueReplies"], 0), hint: "Reply SLA at risk" }, { label: "Sync health", value: `${pickNumber(health, ["syncSuccessRate"], 0)}%`, hint: "Successful mailbox syncs" }];
-    return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK MailPilot analytics."} title="SK MailPilot operations" subtitle="Live mailbox adoption, processing throughput, reply workload, scheduling, and synchronization health." /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] bg-white/60 p-4"><h3 className="text-sm font-black">Email categories</h3><div className="mt-3"><MiniBars rows={getRows(root.categoryDistribution)} valueKey="value" /></div></section><section className="grid grid-cols-2 gap-2 rounded-[1.3rem] bg-white/60 p-4">{[["Recent 7 days", "recentEmails"], ["High priority", "highPriority"], ["Scheduled", "scheduled"], ["Sent", "sent"], ["Failed", "failed"], ["Pending approvals", "pendingApprovals"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><strong className="block text-lg">{pickNumber(summary, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</section></div></section>;
+    return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK MailPilot analytics."} title="SK MailPilot operations" subtitle="Live mailbox adoption, processing throughput, reply workload, scheduling, and synchronization health." action={<MailpilotApprovalManager />} /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] bg-white/60 p-4"><h3 className="text-sm font-black">Email categories</h3><div className="mt-3"><MiniBars rows={getRows(root.categoryDistribution)} valueKey="value" /></div></section><section className="grid grid-cols-2 gap-2 rounded-[1.3rem] bg-white/60 p-4">{[["Recent 7 days", "recentEmails"], ["High priority", "highPriority"], ["Scheduled", "scheduled"], ["Sent", "sent"], ["Failed", "failed"], ["Pending approvals", "pendingApprovals"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><strong className="block text-lg">{pickNumber(summary, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</section></div></section>;
   }
   if (project === "sk-chat") {
     const users = getRecord(root.users); const messages = getRecord(root.messages); const chats = getRecord(root.chats); const communities = getRecord(root.communities); const sessions = getRecord(root.sessions); const charts = getRecord(root.charts);
