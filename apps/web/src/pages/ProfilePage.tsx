@@ -75,7 +75,7 @@ export default function ProfilePage() {
   };
 
   const signOut = async () => {
-    await logout(true);
+    await logout(false);
     void navigate('/login');
   };
 

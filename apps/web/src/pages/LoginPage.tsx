@@ -93,19 +93,13 @@ export default function LoginPage() {
     else void navigate(returnTo, { replace: true });
   };
 
-  const chooseIdentity = async (identity: RememberedIdentity) => {
+  const chooseIdentity = (identity: RememberedIdentity) => {
     setError('');
-    setMessage('Checking active SK Auth session...');
-    const current = await loadSession();
-    if (current?.email === identity.email) {
-      finish();
-      return;
-    }
     setSelectedIdentity(identity);
     setEmail(identity.email);
     setPassword('');
     setConfirmPassword('');
-    setMessage('Your remembered account is signed out. Enter its password to refresh SK Auth.');
+    setMessage('Enter your password to sign in on this browser.');
     setError('');
   };
 
@@ -115,6 +109,13 @@ export default function LoginPage() {
     setError('');
     setMessage('');
     setCanResetPassword(false);
+    if (nextMode === 'login') {
+      setRemembered(getRememberedIdentities());
+      setSelectedIdentity(null);
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    }
     if (nextMode === 'register') {
       setSelectedIdentity(null);
       setEmail('');
@@ -187,11 +188,11 @@ export default function LoginPage() {
   };
 
   return (
-    <main ref={rootRef} className="relative grid min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.28),transparent_32%),linear-gradient(135deg,#f8fafc,#eef6ff_48%,#fff7ed)] px-3 py-3 sm:px-4 sm:py-8">
+    <main ref={rootRef} className="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.28),transparent_32%),linear-gradient(135deg,#f8fafc,#eef6ff_48%,#fff7ed)] px-3 py-3 sm:px-4 sm:py-8">
       <div data-auth-orbit className="pointer-events-none absolute -left-28 top-12 h-72 w-72 rounded-full border border-cyan-300/40" />
       <div data-auth-orbit className="pointer-events-none absolute -right-24 bottom-10 h-80 w-80 rounded-full border border-amber-300/40" />
       <div className="mx-auto grid w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.9fr_1fr]">
-        <section data-auth-panel className="order-2 relative overflow-hidden rounded-[2rem] bg-slate-950 p-7 text-white shadow-[0_30px_120px_rgba(15,23,42,0.32)] lg:order-1">
+        <section data-auth-panel className="relative hidden overflow-hidden rounded-[2rem] bg-slate-950 p-7 text-white shadow-[0_30px_120px_rgba(15,23,42,0.32)] lg:block">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-slate-950">
             <Sparkles size={14} /> SK Auth
           </span>
@@ -200,7 +201,7 @@ export default function LoginPage() {
             Secure identity, email OTP verification, remembered device accounts, and seamless handoff into SK Quiz, SK Central, and future applications.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {['Email OTP', 'Single session', 'Global logout'].map((item) => (
+            {['Email OTP', 'Single session', 'Browser logout'].map((item) => (
               <div key={item} data-auth-float className="rounded-3xl border border-white/10 bg-white/10 p-4 text-sm font-black text-white backdrop-blur">
                 {item}
               </div>
@@ -208,7 +209,7 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <form onSubmit={submit} data-auth-panel className="glass order-1 w-full rounded-[2rem] p-5 shadow-2xl sm:p-7 lg:order-2">
+        <form onSubmit={submit} data-auth-panel className="glass mx-auto w-full max-w-2xl rounded-[2rem] p-5 shadow-2xl sm:p-7 lg:mx-0 lg:max-w-none">
           <div className="mb-6 flex items-start gap-3">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-slate-950 text-white"><ShieldCheck size={22} /></span>
             <div>
@@ -225,7 +226,7 @@ export default function LoginPage() {
                   key={identity.email}
                   type="button"
                   data-auth-field
-                  onClick={() => void chooseIdentity(identity)}
+                  onClick={() => chooseIdentity(identity)}
                   className="flex items-center gap-3 rounded-3xl border border-slate-900/10 bg-white/85 p-3 text-left shadow-sm transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-xl"
                 >
                   <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-200 via-amber-100 to-rose-200 text-base font-black text-slate-950">
