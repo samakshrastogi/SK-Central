@@ -88,25 +88,23 @@ export default function LandingPage() {
               data-app-card
               className="group overflow-hidden rounded-[1.75rem] border border-slate-900/10 bg-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_90px_rgba(15,23,42,0.16)]"
             >
-              <div className="relative h-56 overflow-hidden bg-slate-100">
-                <iframe
-                  title={`${app.name} live preview`}
-                  src={app.liveLink}
-                  loading="lazy"
-                  className="pointer-events-none h-[440px] w-[200%] origin-top-left scale-50 border-0 bg-white"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent" />
-                <span
-                  className={cn(
-                    'absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black shadow-sm',
-                    app.status === 'Live' ? 'bg-emerald-100 text-emerald-800' : ['Testing', 'Preview'].includes(app.status) ? 'bg-cyan-100 text-cyan-800' : 'bg-amber-100 text-amber-800'
-                  )}
-                >
-                  {app.status}
-                </span>
-                <span className={cn('absolute bottom-4 left-4 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br text-sm font-black text-slate-950 shadow-lg', app.gradient)}>
-                  {app.logo}
-                </span>
+              <div className="relative h-60 overflow-hidden bg-gradient-to-br from-slate-100 via-white to-cyan-50">
+                <div className="absolute inset-x-0 top-0 z-20 flex h-11 items-center gap-2 border-b border-slate-900/10 bg-white/95 px-3 backdrop-blur">
+                  <span className={cn('grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br text-[10px] font-black text-slate-950', app.gradient)}>{app.logo}</span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-black text-slate-800">{app.name}</span>
+                  <span className={cn('rounded-full px-2 py-1 text-[10px] font-black', app.status === 'Live' ? 'bg-emerald-100 text-emerald-800' : ['Testing', 'Preview'].includes(app.status) ? 'bg-cyan-100 text-cyan-800' : app.status === 'Hidden' ? 'bg-slate-200 text-slate-700' : 'bg-amber-100 text-amber-800')}>{app.status}</span>
+                  <a href={app.liveLink} target="_blank" rel="noreferrer" className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-slate-700" aria-label={`Open ${app.name} preview`}><ExternalLink size={13} /></a>
+                </div>
+                <div className="absolute inset-x-0 bottom-0 top-11 overflow-hidden">
+                  <iframe
+                    title={`${app.name} live preview`}
+                    src={app.liveLink}
+                    loading="lazy"
+                    className="pointer-events-none h-[360px] w-[166.67%] origin-top-left scale-[0.6] border-0 bg-white"
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/30 via-transparent to-transparent" />
+                </div>
+                <span className={cn('absolute bottom-3 left-3 z-20 grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br text-sm font-black text-slate-950 shadow-lg ring-2 ring-white/80', app.gradient)}>{app.logo}</span>
               </div>
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3">

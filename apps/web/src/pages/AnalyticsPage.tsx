@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, BookOpenCheck, Brain, Clock, FileQuestion, Gauge, GraduationCap, LogIn, MousePointerClick, Target, UsersRound } from 'lucide-react';
+import { BarChart3, BookOpenCheck, Brain, Clock, FileQuestion, Gauge, GraduationCap, LogIn, MousePointerClick, Target, UsersRound, X } from 'lucide-react';
 import { api } from '@/services/api';
 import { MailpilotApprovalManager } from '@/components/analytics/MailpilotApprovalManager';
 import { useApplicationStore } from '@/store/applicationStore';
@@ -98,6 +98,47 @@ const formatDuration = (seconds: number) => {
   return `${hours}h ${minutes}m ${rest}s`;
 };
 
+const formatAnalyticsDate = (dateKey: string) => new Intl.DateTimeFormat('en-IN', {
+  day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
+}).format(new Date(`${dateKey}T00:00:00.000Z`));
+
+type CountPivotInput = { user: string; email: string; date: string; count: number };
+type DurationPivotInput = { user: string; email: string; platform: string; date: string; seconds: number };
+type AnalyticsCell = string | number;
+
+const buildCountPivot = (source: CountPivotInput[]) => {
+  const dates = [...new Set(source.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
+  const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
+  source.forEach((row) => {
+    const key = `${row.email}-${row.user}`;
+    const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
+    current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
+    grouped.set(key, current);
+  });
+  const rows: AnalyticsCell[][] = [...grouped.values()].map((row, index) => {
+    const values = dates.map((date) => row.counts[date] ?? 0);
+    return [index + 1, `${row.user}\n${row.email}`, ...values, values.reduce((sum, value) => sum + value, 0)];
+  });
+  const dateTotals = dates.map((_, dateIndex) => rows.reduce((sum, row) => sum + Number(row[dateIndex + 2] ?? 0), 0));
+  return { dates, rows, totals: ['', 'Date totals', ...dateTotals, dateTotals.reduce((sum, value) => sum + value, 0)] as AnalyticsCell[] };
+};
+
+const buildDurationPivot = (source: DurationPivotInput[]) => {
+  const dates = [...new Set(source.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
+  const grouped = new Map<string, { user: string; email: string; platform: string; seconds: Record<string, number> }>();
+  source.forEach((row) => {
+    const key = `${row.email}-${row.user}-${row.platform}`;
+    const current = grouped.get(key) ?? { user: row.user, email: row.email, platform: row.platform, seconds: {} };
+    current.seconds[row.date] = (current.seconds[row.date] ?? 0) + row.seconds;
+    grouped.set(key, current);
+  });
+  const numericRows = [...grouped.values()].map((row) => ({ row, values: dates.map((date) => row.seconds[date] ?? 0) }));
+  const rows: AnalyticsCell[][] = numericRows.map(({ row, values }, index) => [
+    index + 1, `${row.user}\n${row.email}`, row.platform, ...values.map(formatDuration), formatDuration(values.reduce((sum, value) => sum + value, 0))
+  ]);
+  const dateTotals = dates.map((_, dateIndex) => numericRows.reduce((sum, item) => sum + item.values[dateIndex], 0));
+  return { dates, rows, totals: ['', 'Date totals', 'All platforms', ...dateTotals.map(formatDuration), formatDuration(dateTotals.reduce((sum, value) => sum + value, 0))] as AnalyticsCell[] };
+};
 export default function AnalyticsPage() {
   const [data, setData] = useState<IdentityAnalytics>({ users: [], activities: [] });
   const [skQuiz, setSkQuiz] = useState<SkQuizIntegrationState>({ connected: false, message: 'Waiting for SK Quiz analytics.', data: null });
@@ -195,113 +236,12 @@ export default function AnalyticsPage() {
   const chatVisitRows = useMemo(() => buildVisitRows(data.activities, 'sk-chat'), [data.activities]);
   const mediaflowVisitRows = useMemo(() => buildVisitRows(data.activities, 'sk-mediaflow'), [data.activities]);
 
-  const loginDateColumns = useMemo(() => {
-    return [...new Set(loginRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
-  }, [loginRows]);
-
-  const loginPivotRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
-    loginRows.forEach((row) => {
-      const key = `${row.email}-${row.user}`;
-      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
-      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
-      grouped.set(key, current);
-    });
-
-    return [...grouped.values()].map((row, index) => [
-      index + 1,
-      row.user,
-      row.email,
-      ...loginDateColumns.map((date) => row.counts[date] ?? 0)
-    ]);
-  }, [loginDateColumns, loginRows]);
-
-  const quizVisitDateColumns = useMemo(() => {
-    return [...new Set(quizVisitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
-  }, [quizVisitRows]);
-
-  const quizVisitPivotRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
-    quizVisitRows.forEach((row) => {
-      const key = `${row.email}-${row.user}`;
-      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
-      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
-      grouped.set(key, current);
-    });
-
-    return [...grouped.values()].map((row, index) => [
-      index + 1,
-      row.user,
-      row.email,
-      ...quizVisitDateColumns.map((date) => row.counts[date] ?? 0)
-    ]);
-  }, [quizVisitDateColumns, quizVisitRows]);
-
-
-  const mailpilotVisitDateColumns = useMemo(() => {
-    return [...new Set(mailpilotVisitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
-  }, [mailpilotVisitRows]);
-
-  const mailpilotVisitPivotRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
-    mailpilotVisitRows.forEach((row) => {
-      const key = `${row.email}-${row.user}`;
-      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
-      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
-      grouped.set(key, current);
-    });
-    return [...grouped.values()].map((row, index) => [
-      index + 1,
-      row.user,
-      row.email,
-      ...mailpilotVisitDateColumns.map((date) => row.counts[date] ?? 0)
-    ]);
-  }, [mailpilotVisitDateColumns, mailpilotVisitRows]);
-  const chatVisitDateColumns = useMemo(() => [...new Set(chatVisitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a)), [chatVisitRows]);
-  const chatVisitPivotRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
-    chatVisitRows.forEach((row) => {
-      const key = `${row.email}-${row.user}`;
-      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
-      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
-      grouped.set(key, current);
-    });
-    return [...grouped.values()].map((row, index) => [index + 1, row.user, row.email, ...chatVisitDateColumns.map((date) => row.counts[date] ?? 0)]);
-  }, [chatVisitDateColumns, chatVisitRows]);
-
-  const mediaflowVisitDateColumns = useMemo(() => [...new Set(mediaflowVisitRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a)), [mediaflowVisitRows]);
-  const mediaflowVisitPivotRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; counts: Record<string, number> }>();
-    mediaflowVisitRows.forEach((row) => {
-      const key = `${row.email}-${row.user}`;
-      const current = grouped.get(key) ?? { user: row.user, email: row.email, counts: {} };
-      current.counts[row.date] = (current.counts[row.date] ?? 0) + row.count;
-      grouped.set(key, current);
-    });
-    return [...grouped.values()].map((row, index) => [index + 1, row.user, row.email, ...mediaflowVisitDateColumns.map((date) => row.counts[date] ?? 0)]);
-  }, [mediaflowVisitDateColumns, mediaflowVisitRows]);
-  const activeTimeDateColumns = useMemo(() => {
-    return [...new Set(activeTimeRows.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
-  }, [activeTimeRows]);
-
-  const activeTimePivotRows = useMemo(() => {
-    const grouped = new Map<string, { user: string; email: string; platform: string; seconds: Record<string, number> }>();
-    activeTimeRows.forEach((row) => {
-      const key = `${row.email}-${row.user}-${row.platform}`;
-      const current = grouped.get(key) ?? { user: row.user, email: row.email, platform: row.platform, seconds: {} };
-      current.seconds[row.date] = (current.seconds[row.date] ?? 0) + row.seconds;
-      grouped.set(key, current);
-    });
-
-    return [...grouped.values()].map((row, index) => [
-      index + 1,
-      row.user,
-      row.email,
-      row.platform,
-      ...activeTimeDateColumns.map((date) => formatDuration(row.seconds[date] ?? 0))
-    ]);
-  }, [activeTimeDateColumns, activeTimeRows]);
-
+  const loginPivot = useMemo(() => buildCountPivot(loginRows), [loginRows]);
+  const quizVisitPivot = useMemo(() => buildCountPivot(quizVisitRows), [quizVisitRows]);
+  const mailpilotVisitPivot = useMemo(() => buildCountPivot(mailpilotVisitRows), [mailpilotVisitRows]);
+  const chatVisitPivot = useMemo(() => buildCountPivot(chatVisitRows), [chatVisitRows]);
+  const mediaflowVisitPivot = useMemo(() => buildCountPivot(mediaflowVisitRows), [mediaflowVisitRows]);
+  const activeTimePivot = useMemo(() => buildDurationPivot(activeTimeRows), [activeTimeRows]);
   const storedActiveSeconds = activeTimeRows.reduce((sum, row) => sum + row.seconds, 0);
   const activeUserCount = Math.max(1, new Set(activeTimeRows.map((row) => row.email || row.user)).size || data.users.length || 1);
   const sessionElapsedSeconds = document.visibilityState === 'visible' ? Math.max(0, Math.floor((liveTick - sessionStartedAt.current) / 1000)) : 0;
@@ -320,63 +260,71 @@ export default function AnalyticsPage() {
     users: {
       title: 'Unique Users',
       columns: ['S.no.', 'User name', 'Email ID'],
-      rows: data.users.map((user, index) => [index + 1, user.name, user.email]),
-      footer: `Total users: ${data.users.length}`
+      rows: data.users.map((user, index) => [index + 1, user.name, user.email])
     },
     logins: {
       title: 'Login Count',
-      columns: ['S.no.', 'Users', 'Email ID', ...loginDateColumns],
-      rows: loginPivotRows,
-      footer: `Total logins: ${loginRows.reduce((sum, row) => sum + row.count, 0)}`
+      columns: ['S.no.', 'User', ...loginPivot.dates.map(formatAnalyticsDate), 'Total'],
+      rows: loginPivot.rows,
+      totals: loginPivot.totals,
+      footer: `${loginRows.reduce((sum, row) => sum + row.count, 0)} login events across the full available history.`
     },
     time: {
       title: 'Average Active Time',
-      columns: ['S.no.', 'Users', 'Email ID', 'Platform', ...activeTimeDateColumns],
-      rows: activeTimePivotRows,
-      footer: `Average active time: ${formatDuration(averageActiveSeconds)} - Total active time: ${formatDuration(liveActiveSeconds)}`
+      columns: ['S.no.', 'User', 'Platform', ...activeTimePivot.dates.map(formatAnalyticsDate), 'Total'],
+      rows: activeTimePivot.rows,
+      totals: activeTimePivot.totals,
+      footer: `Average ${formatDuration(averageActiveSeconds)} per active user - ${formatDuration(liveActiveSeconds)} total.`
     },
     quizVisits: {
       title: 'SK Quiz Visits',
-      columns: ['S.no.', 'Users', 'Email ID', ...quizVisitDateColumns],
-      rows: quizVisitPivotRows,
-      footer: `Visits count once per user every 10 minutes. Total visits: ${quizVisitRows.reduce((sum, row) => sum + row.count, 0)}`
+      columns: ['S.no.', 'User', ...quizVisitPivot.dates.map(formatAnalyticsDate), 'Total'],
+      rows: quizVisitPivot.rows,
+      totals: quizVisitPivot.totals,
+      footer: 'Visits count once per user every 10 minutes.'
     },
     mailpilotVisits: {
       title: 'SK Mailpilot Visits',
-      columns: ['S.no.', 'Users', 'Email ID', ...mailpilotVisitDateColumns],
-      rows: mailpilotVisitPivotRows,
-      footer: `Visits count once per user every 10 minutes. Total visits: ${mailpilotVisitRows.reduce((sum, row) => sum + row.count, 0)}`
+      columns: ['S.no.', 'User', ...mailpilotVisitPivot.dates.map(formatAnalyticsDate), 'Total'],
+      rows: mailpilotVisitPivot.rows,
+      totals: mailpilotVisitPivot.totals,
+      footer: 'Visits count once per user every 10 minutes.'
     },
     chatVisits: {
       title: 'SK Chat Visits',
-      columns: ['S.no.', 'Users', 'Email ID', ...chatVisitDateColumns],
-      rows: chatVisitPivotRows,
-      footer: `Visits count once per user every 10 minutes. Total visits: ${chatVisitRows.reduce((sum, row) => sum + row.count, 0)}`
+      columns: ['S.no.', 'User', ...chatVisitPivot.dates.map(formatAnalyticsDate), 'Total'],
+      rows: chatVisitPivot.rows,
+      totals: chatVisitPivot.totals,
+      footer: 'Visits count once per user every 10 minutes.'
     },
     mediaflowVisits: {
       title: 'SK MediaFlow Visits',
-      columns: ['S.no.', 'Users', 'Email ID', ...mediaflowVisitDateColumns],
-      rows: mediaflowVisitPivotRows,
-      footer: `Visits count once per user every 10 minutes. Total visits: ${mediaflowVisitRows.reduce((sum, row) => sum + row.count, 0)}`
+      columns: ['S.no.', 'User', ...mediaflowVisitPivot.dates.map(formatAnalyticsDate), 'Total'],
+      rows: mediaflowVisitPivot.rows,
+      totals: mediaflowVisitPivot.totals,
+      footer: 'Visits count once per user every 10 minutes.'
     }
   };
-
   return (
     <div className="space-y-4">
-      <section className="glass rounded-[2rem] p-5">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-700">Smart Analytics</p>
-        <h1 className="mt-1 text-3xl font-black text-slate-950">SK Intelligence Dashboard</h1>
-        <p className="mt-1 text-sm font-semibold text-slate-500">Central identity, platform usage, SK Quiz, SK Mailpilot, SK Chat, and SK MediaFlow visits, and application-level analytics.</p>
-        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Live · synced automatically</div>
-        <div className="mt-4 flex gap-2 overflow-x-auto">
-          {projectTabs.map((project) => (
-            <button key={project} type="button" onClick={() => setActiveProject(project)} className={`rounded-2xl px-4 py-2 text-xs font-black ${activeProject === project ? 'bg-slate-950 text-white' : 'bg-white/80 text-slate-600'}`}>
-              {project}
-            </button>
-          ))}
+      <section className="glass rounded-[1.5rem] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700">Smart Analytics</p>
+            <h1 className="mt-0.5 text-2xl font-black text-slate-950">SK Intelligence Dashboard</h1>
+            <p className="mt-0.5 text-xs font-semibold text-slate-500">Live identity and product insights across the SK ecosystem.</p>
+          </div>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-[11px] font-black text-emerald-700"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Live</span>
+            <label className="min-w-0 flex-1 sm:min-w-52">
+              <span className="sr-only">Analytics application</span>
+              <select value={activeProject} onChange={(event) => setActiveProject(event.target.value)} className="h-10 w-full rounded-2xl border-slate-200 bg-white/90 px-3 text-xs font-black text-slate-800 shadow-sm">
+                {projectTabs.map((project) => <option key={project} value={project}>{project}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
       </section>
-
       {activeProject === 'sk-central' ? (
         <>
           <section className="space-y-2">
@@ -404,12 +352,7 @@ export default function AnalyticsPage() {
             </div>
           </section>
 
-          <section className="glass rounded-[2rem] p-5">
-            <h2 className="flex items-center gap-2 text-xl font-black text-slate-950"><BarChart3 size={20} /> Central identity intelligence</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-              SK Central owns identity-wide analytics only: unique users, login events, cross-platform active time, SK Quiz, SK Mailpilot, SK Chat, and SK MediaFlow visit handoffs, notification activity, sessions, and role changes.
-            </p>
-          </section>
+
         </>
       ) : activeProject === 'sk-quiz' ? (
         <QuizIntelligencePanel state={skQuiz} />
@@ -421,44 +364,46 @@ export default function AnalyticsPage() {
   );
 }
 
-function AnalyticsModal({ title, columns, rows, footer, onClose }: { title: string; columns: string[]; rows: Array<Array<string | number>>; footer?: string; onClose: () => void }) {
+function AnalyticsModal({ title, columns, rows, totals, footer, onClose }: { title: string; columns: string[]; rows: AnalyticsCell[][]; totals?: AnalyticsCell[]; footer?: string; onClose: () => void }) {
   const [query, setQuery] = useState('');
   const filteredRows = rows.filter((row) => row.join(' ').toLowerCase().includes(query.toLowerCase()));
+  const stickyLast = 'sticky right-0 z-10 border-l border-slate-900/10 bg-white/95 shadow-[-8px_0_16px_rgba(15,23,42,0.05)]';
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm" onMouseDown={onClose}>
-      <div className="glass max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-[2rem]" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-3 backdrop-blur-sm sm:p-4" onMouseDown={onClose}>
+      <div className="glass flex max-h-[88vh] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem]" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/10 p-4">
           <div>
             <h2 className="text-xl font-black text-slate-950">{title}</h2>
-            <p className="text-xs font-bold text-slate-500">{footer}</p>
+            {footer ? <p className="text-xs font-bold text-slate-500">{footer}</p> : null}
           </div>
-          <div className="flex items-center gap-2">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search table" className="h-10 rounded-2xl border-slate-200 text-sm" />
-            <button type="button" onClick={onClose} className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white">Close</button>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search table" className="h-10 min-w-0 flex-1 rounded-2xl border-slate-200 text-sm sm:w-64" />
+            <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-950 text-white" aria-label={`Close ${title}`}><X size={18} /></button>
           </div>
         </div>
-        <div className="max-h-[62vh] overflow-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-white/90 text-xs font-black uppercase text-slate-500 backdrop-blur">
-              <tr>{columns.map((column) => <th key={column} className="px-4 py-3">{column}</th>)}</tr>
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table className="min-w-full w-max text-left text-sm">
+            <thead className="sticky top-0 z-20 bg-white/95 text-xs font-black uppercase text-slate-500 backdrop-blur">
+              <tr>{columns.map((column, index) => <th key={`${column}-${index}`} className={`whitespace-nowrap px-4 py-3 ${index === columns.length - 1 && column === 'Total' ? stickyLast : ''}`}>{column}</th>)}</tr>
             </thead>
             <tbody>
               {filteredRows.length ? filteredRows.map((row, rowIndex) => (
                 <tr key={rowIndex} className="border-t border-slate-900/5">
-                  {row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className="px-4 py-3 font-bold text-slate-700">{cell}</td>)}
+                  {row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className={`whitespace-pre-line px-4 py-3 font-bold text-slate-700 ${cellIndex === columns.length - 1 && columns.at(-1) === 'Total' ? stickyLast : ''}`}>{cell}</td>)}
                 </tr>
               )) : (
                 <tr><td className="px-4 py-6 text-sm font-bold text-slate-500" colSpan={columns.length}>No matching data.</td></tr>
               )}
             </tbody>
+            {totals ? <tfoot className="sticky bottom-0 z-20 border-t border-slate-900/10 bg-cyan-50/95 text-xs font-black text-slate-900 backdrop-blur">
+              <tr>{totals.map((cell, index) => <td key={`total-${index}`} className={`whitespace-nowrap px-4 py-3 ${index === columns.length - 1 && columns.at(-1) === 'Total' ? `${stickyLast} !bg-cyan-50` : ''}`}>{cell}</td>)}</tr>
+            </tfoot> : null}
           </table>
         </div>
-        {footer ? <div className="border-t border-slate-900/10 bg-white/60 px-4 py-3 text-sm font-black text-slate-950">{footer}</div> : null}
       </div>
     </div>
   );
 }
-
 interface CompactMetric { label: string; value: string | number; hint: string }
 
 function LivePanelHeader({ connected, message, title, subtitle, action }: { connected: boolean; message: string; title: string; subtitle: string; action?: ReactNode }) {

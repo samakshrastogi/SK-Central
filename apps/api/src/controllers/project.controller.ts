@@ -77,14 +77,17 @@ const auditProjectChange = async (req: Request, action: string, project: Record<
   });
 };
 
-export const listProjects: RequestHandler = async (_req, res) => {
-  ok(res, await service.listProjects());
+export const listProjects: RequestHandler = async (req, res) => {
+  const projects = await service.listProjects();
+  const current = await getSession(req);
+  ok(res, current?.user.role === 'admin' ? projects : projects.filter((project) => project.status !== 'Hidden'));
 };
 
 export const getProject: RequestHandler = async (req, res) => {
   const slug = String(req.params.slug);
   const project = await service.getProject(slug);
-  if (!project) {
+  const current = await getSession(req);
+  if (!project || (project.status === 'Hidden' && current?.user.role !== 'admin')) {
     res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Project not found' });
     return;
   }

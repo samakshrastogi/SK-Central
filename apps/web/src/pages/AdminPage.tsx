@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Activity, ExternalLink, FileUp, Pencil, Plus, Search, ShieldCheck, Trash2, UserRoundCog, X } from 'lucide-react';
+import { Activity, Eye, ExternalLink, FileUp, Pencil, Plus, Save, Search, ShieldCheck, Trash2, UserRound, UserRoundCog, X } from 'lucide-react';
 import { api } from '@/services/api';
 import { useApplicationStore } from '@/store/applicationStore';
 import type { ApplicationDocumentation, ManagedApplication, ProjectStatus } from '@/types';
@@ -94,6 +94,8 @@ export default function AdminPage() {
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
   const [applicationError, setApplicationError] = useState('');
   const [userAccessOpen, setUserAccessOpen] = useState(false);
+  const [pendingAccess, setPendingAccess] = useState<Record<string, AdminAccessValue>>({});
+  const [savingAccess, setSavingAccess] = useState(false);
   const currentUser = useAuthStore((state) => state.user);
   const readOnly = isReadOnlyAdmin(currentUser);
   const applications = useApplicationStore((state) => state.applications);
@@ -201,10 +203,29 @@ export default function AdminPage() {
     setApplicationModalOpen(true);
   };
 
-  const setAccess = async (userId: string, access: AdminAccessValue) => {
-    const temporaryAdminHours = access.startsWith('temporary-') ? Number(access.split('-')[1]) : undefined;
-    await api.post('/auth/users/role', { userId, role: access === 'admin' ? 'admin' : 'user', temporaryAdminHours });
-    await loadUsers();
+  const openUserAccess = () => {
+    setPendingAccess(Object.fromEntries(users.map((user) => [user._id, getAdminAccessValue(user)])));
+    setUserAccessOpen(true);
+  };
+
+  const saveAccessChanges = async () => {
+    const changes = users.filter((user) => (pendingAccess[user._id] ?? getAdminAccessValue(user)) !== getAdminAccessValue(user));
+    if (!changes.length) {
+      setUserAccessOpen(false);
+      return;
+    }
+    setSavingAccess(true);
+    try {
+      await Promise.all(changes.map((user) => {
+        const access = pendingAccess[user._id] ?? getAdminAccessValue(user);
+        const temporaryAdminHours = access.startsWith('temporary-') ? Number(access.split('-')[1]) : undefined;
+        return api.post('/auth/users/role', { userId: user._id, role: access === 'admin' ? 'admin' : 'user', temporaryAdminHours });
+      }));
+      await loadUsers();
+      setUserAccessOpen(false);
+    } finally {
+      setSavingAccess(false);
+    }
   };
   const filteredApplications = useMemo(() => {
     const normalized = applicationQuery.toLowerCase();
@@ -233,7 +254,7 @@ export default function AdminPage() {
             <button type="button" onClick={startAdd} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white sm:w-auto">
               <Plus size={16} /> Add Application
             </button>
-            <button type="button" onClick={() => setUserAccessOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 shadow-sm sm:w-auto">
+            <button type="button" onClick={openUserAccess} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 shadow-sm sm:w-auto">
               <UserRoundCog size={16} /> Manage Admin Access
             </button>
           </div>}
@@ -351,7 +372,7 @@ export default function AdminPage() {
                 <input {...register('name', { required: 'Application name is required.', minLength: { value: 2, message: 'Application name must contain at least 2 characters.' } })} placeholder="Application name" className="rounded-2xl border-slate-200 text-sm" />
                 <select {...register('category', { required: 'Category is required.', minLength: { value: 2, message: 'Category must contain at least 2 characters.' } })} className="rounded-2xl border-slate-200 text-sm">{['Website', 'Application', 'Dashboard', 'Other'].map((category) => <option key={category}>{category}</option>)}</select>
                 <input {...register('liveLink', { required: 'Live link is required.', pattern: { value: /^https?:\/\//i, message: 'Live link must begin with http:// or https://.' } })} placeholder="Live link" className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
-                <select {...register('status')} className="rounded-2xl border-slate-200 text-sm">{['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance'].map((status) => <option key={status}>{status}</option>)}</select>
+                <select {...register('status')} className="rounded-2xl border-slate-200 text-sm">{['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance', 'Hidden'].map((status) => <option key={status}>{status}</option>)}</select>
                 <label className="grid gap-1 text-xs font-black text-slate-600">Position (1 is first, left to right)<input type="number" min="1" {...register('position', { valueAsNumber: true, required: 'Position is required.', min: { value: 1, message: 'Position must be 1 or greater.' } })} className="rounded-2xl border-slate-200 text-sm font-semibold text-slate-950" /></label>
                 <input {...register('technologies')} placeholder="React, Node, MongoDB" className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
                 <textarea {...register('description', { required: 'Description is required.', minLength: { value: 8, message: 'Description must contain at least 8 characters.' } })} placeholder="Description" rows={4} className="rounded-2xl border-slate-200 text-sm sm:col-span-2" />
@@ -377,7 +398,7 @@ export default function AdminPage() {
 
       {userAccessOpen && !readOnly ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm" onMouseDown={() => setUserAccessOpen(false)}>
-          <div className="glass max-h-[86vh] w-full max-w-4xl overflow-hidden rounded-[2rem]" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="glass flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem]" onMouseDown={(event) => event.stopPropagation()}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/10 p-4">
               <div>
                 <h2 className="text-xl font-black text-slate-950">Manage Admin Access</h2>
@@ -385,10 +406,10 @@ export default function AdminPage() {
               </div>
               <div className="flex items-center gap-2">
                 <input value={userQuery} onChange={(event) => setUserQuery(event.target.value)} placeholder="Search users" className="h-10 rounded-2xl border-slate-200 text-sm" />
-                <button type="button" onClick={() => setUserAccessOpen(false)} className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white">Close</button>
+                <button type="button" onClick={() => setUserAccessOpen(false)} className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-950 text-white" aria-label="Close admin access"><X size={18} /></button>
               </div>
             </div>
-            <div className="max-h-[62vh] overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full text-left text-sm">
                 <thead className="sticky top-0 bg-white/90 text-xs font-black uppercase text-slate-500 backdrop-blur">
                   <tr><th className="px-4 py-3">Access</th><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email ID</th><th className="px-4 py-3">Expires</th></tr>
@@ -396,14 +417,17 @@ export default function AdminPage() {
                 <tbody>
                   {filteredUsers.map((user) => (
                     <tr key={user._id} className="border-t border-slate-900/5">
-                      <td className="px-4 py-3"><select value={getAdminAccessValue(user)} onChange={(event) => void setAccess(user._id, event.target.value as AdminAccessValue)} className="rounded-xl border-slate-200 bg-white text-xs font-bold"><option value="user">Standard user</option><option value="temporary-24">Read only · 24 hours</option><option value="temporary-168">Read only · 7 days</option><option value="temporary-720">Read only · 30 days</option><option value="admin">Full admin</option></select></td>
+                      <td className="px-4 py-3"><select value={pendingAccess[user._id] ?? getAdminAccessValue(user)} onChange={(event) => setPendingAccess((current) => ({ ...current, [user._id]: event.target.value as AdminAccessValue }))} className="rounded-xl border-slate-200 bg-white text-xs font-bold"><option value="user">Standard user</option><option value="temporary-24">Read only - 24 hours</option><option value="temporary-168">Read only - 7 days</option><option value="temporary-720">Read only - 30 days</option><option value="admin">Full admin</option></select></td>
                       <td className="px-4 py-3 font-bold text-slate-800">{user.name}</td>
-                      <td className="px-4 py-3 font-bold text-slate-600">{user.email}</td><td className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-500">{user.role === 'admin' ? 'Permanent' : user.temporaryAdminUntil && new Date(user.temporaryAdminUntil).getTime() > Date.now() ? formatDate(user.temporaryAdminUntil) : '—'}</td>
+                      <td className="px-4 py-3 font-bold text-slate-600">{user.email}</td><td className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-500">{user.role === 'admin' ? <span className="inline-flex items-center gap-1.5 text-emerald-700"><ShieldCheck size={14} /> Permanent</span> : user.temporaryAdminUntil && new Date(user.temporaryAdminUntil).getTime() > Date.now() ? <span className="inline-flex items-center gap-1.5 text-cyan-700"><Eye size={14} /> {formatDate(user.temporaryAdminUntil)}</span> : <span className="inline-flex items-center gap-1.5"><UserRound size={14} /> Standard</span>}</td>
                     </tr>
                   ))}
                   {!filteredUsers.length ? <tr><td colSpan={4} className="px-4 py-6 text-sm font-bold text-slate-500">No users found.</td></tr> : null}
                 </tbody>
               </table>
+            </div>
+            <div className="flex shrink-0 justify-end border-t border-slate-900/10 bg-white/90 p-4 backdrop-blur">
+              <button type="button" disabled={savingAccess} onClick={() => void saveAccessChanges()} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"><Save size={16} /> {savingAccess ? 'Saving...' : 'Save Changes'}</button>
             </div>
           </div>
         </div>

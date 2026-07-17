@@ -245,11 +245,11 @@ export function MarkdownPreview({ content, platformName = 'SK platform' }: Markd
   };
 
   return (
-    <div>
-      {hasFlowchart ? <div className="markdown-preview-tools">
+    <div className="markdown-preview-shell">
+      <div className="markdown-preview-tools">
         {shareStatus ? <span role="status">{shareStatus}</span> : null}
-        <button type="button" onClick={() => void shareDocumentation()} title="Share documentation"><Share2 size={16} /></button>
-      </div> : null}
+        <button type="button" onClick={() => void shareDocumentation()} title="Share documentation" aria-label={`Share ${platformName} documentation`}><Share2 size={16} /></button>
+      </div>
       <article ref={rootRef} className="markdown-preview" dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );

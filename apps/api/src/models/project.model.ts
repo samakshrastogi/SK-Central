@@ -9,7 +9,7 @@ const projectSchema = new Schema(
     description: { type: String, required: true },
     longDescription: { type: String },
     technologies: [{ type: String }],
-    status: { type: String, enum: ['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance'], default: 'Planned' },
+    status: { type: String, enum: ['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance', 'Hidden'], default: 'Planned' },
     version: { type: String, default: '0.1.0' },
     launchUrl: { type: String },
     documentationUrl: { type: String },

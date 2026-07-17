@@ -18,7 +18,7 @@ export const createProjectSchema = z.object({
   description: z.string().trim().min(8, 'Description must contain at least 8 characters.'),
   longDescription: z.string().optional(),
   technologies: z.array(z.string()).default([]),
-  status: z.enum(['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance']).default('Planned'),
+  status: z.enum(['Planned', 'In Progress', 'Testing', 'Preview', 'Live', 'Maintenance', 'Hidden']).default('Planned'),
   version: z.string().default('0.1.0'),
   launchUrl: z.string().optional(),
   documentationUrl: z.string().optional(),
