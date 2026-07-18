@@ -104,7 +104,7 @@ const formatAnalyticsDate = (dateKey: string) => new Intl.DateTimeFormat('en-IN'
 
 type CountPivotInput = { user: string; email: string; date: string; count: number };
 type DurationPivotInput = { user: string; email: string; platform: string; date: string; seconds: number };
-type AnalyticsCell = string | number;
+type AnalyticsCell = string | number | boolean;
 
 const buildCountPivot = (source: CountPivotInput[]) => {
   const dates = [...new Set(source.map((row) => row.date))].sort((a, b) => b.localeCompare(a));
@@ -355,7 +355,7 @@ export default function AnalyticsPage() {
 
         </>
       ) : activeProject === 'sk-quiz' ? (
-        <QuizIntelligencePanel state={skQuiz} />
+        <QuizIntelligencePanel state={skQuiz} activities={data.activities} />
       ) : (
         <ConnectedApplicationPanel project={activeProject} state={connectedInsights[activeProject]} readOnly={readOnly} />
       )}
@@ -389,14 +389,14 @@ function AnalyticsModal({ title, columns, rows, totals, footer, onClose }: { tit
             <tbody>
               {filteredRows.length ? filteredRows.map((row, rowIndex) => (
                 <tr key={rowIndex} className="border-t border-slate-900/5">
-                  {row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className={`whitespace-pre-line px-4 py-3 font-bold text-slate-700 ${cellIndex === columns.length - 1 && columns.at(-1) === 'Total' ? stickyLast : ''}`}>{cell}</td>)}
+                  {row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className={`whitespace-pre-line px-4 py-3 font-bold text-slate-700 ${cellIndex === columns.length - 1 && columns.at(-1) === 'Total' ? stickyLast : ''}`}>{typeof cell === 'boolean' ? <input type="checkbox" checked={cell} readOnly className="h-4 w-4 rounded border-slate-300 text-cyan-600" aria-label={cell ? 'Completed' : 'Not completed'} /> : cell}</td>)}
                 </tr>
               )) : (
                 <tr><td className="px-4 py-6 text-sm font-bold text-slate-500" colSpan={columns.length}>No matching data.</td></tr>
               )}
             </tbody>
             {totals ? <tfoot className="sticky bottom-0 z-20 border-t border-slate-900/10 bg-cyan-50/95 text-xs font-black text-slate-900 backdrop-blur">
-              <tr>{totals.map((cell, index) => <td key={`total-${index}`} className={`whitespace-nowrap px-4 py-3 ${index === columns.length - 1 && columns.at(-1) === 'Total' ? `${stickyLast} !bg-cyan-50` : ''}`}>{cell}</td>)}</tr>
+              <tr>{totals.map((cell, index) => <td key={`total-${index}`} className={`whitespace-nowrap px-4 py-3 ${index === columns.length - 1 && columns.at(-1) === 'Total' ? `${stickyLast} !bg-cyan-50` : ''}`}>{typeof cell === 'boolean' ? <input type="checkbox" checked={cell} readOnly className="h-4 w-4 rounded border-slate-300 text-cyan-600" aria-label={cell ? 'Completed' : 'Not completed'} /> : cell}</td>)}</tr>
             </tfoot> : null}
           </table>
         </div>
@@ -423,47 +423,146 @@ function MiniBars({ rows, valueKey = "count" }: { rows: Array<Record<string, unk
   return <div className="space-y-2">{rows.map((row, index) => { const value = pickNumber(row, [valueKey], 0); return <div key={`${String(row.label ?? row.confidence ?? index)}-${index}`}><div className="flex justify-between gap-3 text-xs font-bold text-slate-600"><span>{String(row.label ?? row.confidence ?? "Unknown")}</span><span>{value}{valueKey.toLowerCase().includes("rate") || valueKey === "accuracy" ? "%" : ""}</span></div><div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(2, (value / max) * 100)}%` }} /></div></div>; })}</div>;
 }
 
-function QuizIntelligencePanel({ state }: { state: SkQuizIntegrationState }) {
+function QuizIntelligencePanel({ state, activities }: { state: SkQuizIntegrationState; activities: ActivityRow[] }) {
+  type DetailKey = 'users' | 'exams' | 'plans' | 'streak' | 'inactive4' | 'inactive7' | 'inactive30' | 'quizAbandonment';
+  const [activeDetail, setActiveDetail] = useState<DetailKey | null>(null);
   const root = getRecord(state.data);
-  const summary = getRecord(root.summary);
-  const intelligence = getRecord(root.learningIntelligence);
-  const funnel = getRows(intelligence.onboardingFunnel);
-  const gamification = getRecord(intelligence.gamification);
-  const inactivity = getRecord(intelligence.inactivity);
-  const compliance = getRecord(intelligence.planCompliance);
-  const subjectRows = getRows(intelligence.subjectTimeInvestment);
-  const outliers = getRows(intelligence.questionOutliers);
-  const confidence = getRows(intelligence.confidenceAccuracy);
-  const quizFunnel = getRecord(intelligence.quizFunnel);
-  const quizStatuses = getRecord(quizFunnel.statuses);
-  const metrics: CompactMetric[] = [
-    { label: "Learners", value: pickNumber(summary, ["userCount"], 0), hint: "Registered SK Quiz accounts" },
-    { label: "Reached first quiz", value: funnel.at(-1)?.count as number ?? 0, hint: "End-to-end onboarding conversion" },
-    { label: "Average streak", value: `${pickNumber(gamification, ["averageStreak"], 0)} days`, hint: "Current learner consistency" },
-    { label: "Inactive 7+ days", value: pickNumber(inactivity, ["inactive7d"], 0), hint: "Re-engagement cohort" },
-    { label: "Carry-forward rate", value: `${pickNumber(compliance, ["carryForwardRate"], 0)}%`, hint: "Due tasks still incomplete" },
-    { label: "Quiz abandonment", value: `${pickNumber(quizFunnel, ["abandonmentRate"], 0)}%`, hint: "In-progress or cancelled sessions" }
+  const users = getRows(root.users);
+  const states = getRows(root.states);
+  const now = Date.now();
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const formatDateValue = (value: unknown) => {
+    const parsed = new Date(String(value ?? ''));
+    return Number.isNaN(parsed.getTime()) ? 'Not available' : new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(parsed);
+  };
+  const identityById = new Map(users.map((user) => [String(user.id ?? user._id ?? ''), {
+    name: pickString(user, ['name'], 'Unknown user'), email: pickString(user, ['email'], 'No email')
+  }]));
+  const visitorMap = new Map<string, { name: string; email: string; firstVisitAt: number; lastVisitAt: number; dates: Set<string> }>();
+  activities.filter((activity) => activity.type === 'visit' && activity.platform === 'sk-quiz' && activity.userId).forEach((activity) => {
+    const identity = activity.userId as IdentityUserRow;
+    const key = identity._id || identity.email;
+    const timestamp = activity.createdAt ? new Date(activity.createdAt).getTime() : new Date(`${activity.dateKey}T00:00:00`).getTime();
+    const existing = visitorMap.get(key) ?? { name: identity.name || 'Unknown user', email: identity.email || 'No email', firstVisitAt: timestamp, lastVisitAt: timestamp, dates: new Set<string>() };
+    existing.firstVisitAt = Math.min(existing.firstVisitAt, timestamp);
+    existing.lastVisitAt = Math.max(existing.lastVisitAt, timestamp);
+    existing.dates.add(activity.dateKey);
+    visitorMap.set(key, existing);
+  });
+  const visitors = [...visitorMap.values()].sort((a, b) => a.firstVisitAt - b.firstVisitAt);
+  const visitDates = [...new Set(visitors.flatMap((visitor) => [...visitor.dates]))].sort((a, b) => b.localeCompare(a));
+  const averageStreak = visitors.length ? Number((visitors.reduce((sum, visitor) => sum + visitor.dates.size, 0) / visitors.length).toFixed(1)) : 0;
+  const inactiveVisitors = (days: number) => visitors.filter((visitor) => now - visitor.lastVisitAt >= days * 86_400_000).sort((a, b) => a.lastVisitAt - b.lastVisitAt);
+
+  const userStates = states.filter((item) => item.userId);
+  const examRows = userStates.map((item) => {
+    const identity = identityById.get(String(item.userId)) ?? { name: 'Unknown user', email: 'No email' };
+    const exams = Array.isArray(item.selectedExamNames) ? item.selectedExamNames.map(String).filter((exam) => exam && exam !== 'No exam') : [];
+    return { item, identity, exams: [...new Set(exams)] };
+  }).filter((row) => row.exams.length > 0);
+  const totalRegisteredExams = examRows.reduce((sum, row) => sum + row.exams.length, 0);
+  const planProgressRows = examRows.flatMap(({ item, identity, exams }) => {
+    const plan = getRows(item.plan);
+    const priorityCount = pickNumber(item, ['priorityCount'], 0);
+    const visitedSteps = Array.isArray(item.visitedSteps) ? item.visitedSteps.map(String) : [];
+    const hasTime = pickNumber(item, ['dailyHours'], 0) > 0 && pickNumber(item, ['weeklyHours'], 0) > 0 && Boolean(item.quizTime);
+    return exams.map((exam) => {
+      const examPlan = plan.filter((task) => String(task.examName ?? '') === exam);
+      return { identity, exam, details: visitedSteps.includes('details') || exams.length > 0, priorities: visitedSteps.includes('subjects') || priorityCount > 0 || examPlan.length > 0, time: visitedSteps.includes('time') || hasTime || examPlan.length > 0, plan: visitedSteps.includes('plan') || examPlan.length > 0 };
+    });
+  });
+  const completePlanUsers = new Set(planProgressRows.filter((row) => row.plan).map((row) => row.identity.email)).size;
+
+  const assignmentByDate = new Map<string, Set<string>>();
+  const attemptByDate = new Map<string, Set<string>>();
+  const quizRows = userStates.map((item) => {
+    const userId = String(item.userId);
+    const identity = identityById.get(userId) ?? { name: 'Unknown user', email: 'No email' };
+    const plan = getRows(item.plan).filter((task) => String(task.date ?? '') && String(task.date) <= todayKey);
+    const history = getRows(item.quizHistory);
+    plan.forEach((task) => {
+      const date = String(task.date);
+      const usersForDate = assignmentByDate.get(date) ?? new Set<string>();
+      usersForDate.add(userId);
+      assignmentByDate.set(date, usersForDate);
+    });
+    history.forEach((quiz) => {
+      const date = String(quiz.date ?? '');
+      if (!date) return;
+      const usersForDate = attemptByDate.get(date) ?? new Set<string>();
+      usersForDate.add(userId);
+      attemptByDate.set(date, usersForDate);
+    });
+    const lastAttempt = history.map((quiz) => String(quiz.date ?? '')).filter(Boolean).sort().at(-1);
+    return { identity, lastAttempt, attempted: history.length, assigned: plan.length };
+  }).filter((row) => row.assigned > 0 || row.attempted > 0);
+  const assignmentDates = [...assignmentByDate.keys()];
+  const averageDailyMissed = assignmentDates.length ? Number((assignmentDates.reduce((sum, date) => {
+    const assigned = assignmentByDate.get(date) ?? new Set<string>();
+    const attempted = attemptByDate.get(date) ?? new Set<string>();
+    return sum + [...assigned].filter((userId) => !attempted.has(userId)).length;
+  }, 0) / assignmentDates.length).toFixed(1)) : 0;
+
+  const inactivityModal = (days: number) => ({
+    title: `Inactive ${days}+ Days`,
+    columns: ['S.no.', 'User', 'Last active date'],
+    rows: inactiveVisitors(days).map((visitor, index) => [index + 1, `${visitor.name}\n${visitor.email}`, formatDateValue(visitor.lastVisitAt)]) as AnalyticsCell[][],
+    footer: `Users whose last recorded SK Quiz visit was at least ${days} days ago.`
+  });
+  const modalMap: Record<DetailKey, { title: string; columns: string[]; rows: AnalyticsCell[][]; footer?: string }> = {
+    users: {
+      title: 'SK Quiz Users',
+      columns: ['S.no.', 'User name', 'Email ID', 'Join date'],
+      rows: visitors.map((visitor, index) => [index + 1, visitor.name, visitor.email, formatDateValue(visitor.firstVisitAt)]),
+      footer: 'Each user is counted once from their first recorded SK Quiz visit.'
+    },
+    exams: {
+      title: 'Registered Exams',
+      columns: ['S.no.', 'User', 'Total exams registered', 'Exam names'],
+      rows: examRows.map((row, index) => [index + 1, `${row.identity.name}\n${row.identity.email}`, row.exams.length, row.exams.join(', ')]),
+      footer: 'Only exams selected by users are counted; discovered suggestions are excluded.'
+    },
+    plans: {
+      title: 'Exam Plan Progress',
+      columns: ['S.no.', 'User', 'Exam', 'Details', 'Priorities', 'Time', 'Plan'],
+      rows: planProgressRows.map((row, index) => [index + 1, `${row.identity.name}\n${row.identity.email}`, row.exam, row.details, row.priorities, row.time, row.plan]),
+      footer: 'Checked stages have saved progress for that user and exam.'
+    },
+    streak: {
+      title: 'Daily Visit Streaks',
+      columns: ['S.no.', 'User', ...visitDates.map(formatAnalyticsDate), 'Total'],
+      rows: visitors.map((visitor, index) => [index + 1, `${visitor.name}\n${visitor.email}`, ...visitDates.map((date) => visitor.dates.has(date)), visitor.dates.size]),
+      footer: 'A user contributes at most one visit per calendar day.'
+    },
+    inactive4: inactivityModal(4),
+    inactive7: inactivityModal(7),
+    inactive30: inactivityModal(30),
+    quizAbandonment: {
+      title: 'Quiz Abandonment',
+      columns: ['S.no.', 'User', 'Last quiz attempted', 'Total quizzes attempted', 'Total quizzes assigned'],
+      rows: quizRows.map((row, index) => [index + 1, `${row.identity.name}\n${row.identity.email}`, row.lastAttempt ? formatDateValue(`${row.lastAttempt}T00:00:00`) : 'No quiz attempted', row.attempted, row.assigned]),
+      footer: 'Assigned quizzes include planned quiz dates up to today.'
+    }
+  };
+  const metrics: Array<{ key: DetailKey; label: string; value: string | number; hint: string }> = [
+    { key: 'users', label: 'Users', value: visitors.length, hint: 'Unique users who visited SK Quiz' },
+    { key: 'exams', label: 'Registered exams', value: totalRegisteredExams, hint: 'Selected exams across all users' },
+    { key: 'plans', label: 'Complete plans', value: completePlanUsers, hint: 'Users who generated an exam plan' },
+    { key: 'streak', label: 'Average streak', value: `${averageStreak} days`, hint: 'Average unique visit days per user' },
+    { key: 'inactive4', label: 'Inactive 4+ days', value: inactiveVisitors(4).length, hint: 'No SK Quiz visit for four days' },
+    { key: 'inactive7', label: 'Inactive 7+ days', value: inactiveVisitors(7).length, hint: 'No SK Quiz visit for seven days' },
+    { key: 'inactive30', label: 'Inactive 30+ days', value: inactiveVisitors(30).length, hint: 'No SK Quiz visit for thirty days' },
+    { key: 'quizAbandonment', label: 'Quiz abandonment', value: averageDailyMissed, hint: 'Average users missing assigned quizzes daily' }
   ];
   return <section className="glass rounded-[2rem] p-4 sm:p-5">
-    <LivePanelHeader connected={state.connected} message={state.message} title="SK Quiz learning intelligence" subtitle="Live learner progression, planning compliance, question quality, confidence calibration, and quiz completion signals." />
-    <CompactMetrics metrics={metrics} />
-    <div className="mt-4 grid gap-3 xl:grid-cols-3">
-      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4 xl:col-span-2"><h3 className="text-sm font-black text-slate-950">Onboarding funnel</h3><div className="mt-3 grid gap-2 sm:grid-cols-5">{funnel.map((stage) => <div key={String(stage.key)} className="rounded-xl bg-slate-50 p-3"><strong className="text-lg text-slate-950">{String(stage.count ?? 0)}</strong><span className="block text-[11px] font-black text-slate-600">{String(stage.label ?? "Stage")}</span><span className="mt-1 block text-[10px] font-bold text-cyan-700">{String(stage.conversionRate ?? 0)}% from prior</span></div>)}</div></section>
-      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black text-slate-950">Inactivity cohorts</h3><div className="mt-3 grid grid-cols-2 gap-2">{[["No study plan", "signedUpNoPlan"], ["Plan, no quiz", "planButNoQuiz"], ["Inactive 7 days", "inactive7d"], ["Inactive 30 days", "inactive30d"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-2"><strong className="block text-lg">{pickNumber(inactivity, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</div></section>
+    <LivePanelHeader connected={state.connected} message={state.message} title="SK Quiz learning intelligence" subtitle="Live visits, registered exams, onboarding completion, daily engagement, inactivity, and assigned-quiz follow-through." />
+    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {metrics.map((metric) => <button key={metric.key} type="button" onClick={() => setActiveDetail(metric.key)} className="rounded-[1.2rem] border border-slate-900/5 bg-white/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-lg"><strong className="block text-2xl text-slate-950">{metric.value}</strong><span className="mt-1 block text-sm font-black text-slate-700">{metric.label}</span><p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{metric.hint}</p></button>)}
     </div>
-    <div className="mt-3 grid gap-3 lg:grid-cols-3">
-      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Streak distribution</h3><div className="mt-3"><MiniBars rows={getRows(gamification.streakDistribution)} /></div></section>
-      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Level distribution</h3><div className="mt-3"><MiniBars rows={getRows(gamification.levelDistribution)} /></div></section>
-      <section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">XP distribution</h3><div className="mt-3"><MiniBars rows={getRows(gamification.xpDistribution)} /></div></section>
-    </div>
-    <div className="mt-3 grid gap-3 xl:grid-cols-2">
-      <section className="overflow-hidden rounded-[1.3rem] border border-slate-900/5 bg-white/60"><div className="p-4"><h3 className="text-sm font-black">Study plan compliance by subject</h3><p className="text-xs font-semibold text-slate-500">Planned hours compared with tracked active study time.</p></div><div className="max-h-64 overflow-auto"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-white"><tr><th className="px-4 py-2">Subject</th><th>Planned</th><th>Active</th><th>Done</th></tr></thead><tbody>{subjectRows.map((row) => <tr key={String(row.subject)} className="border-t border-slate-900/5"><td className="px-4 py-2 font-bold">{String(row.subject)}</td><td>{String(row.plannedHours)}h</td><td>{String(row.actualHours)}h</td><td>{String(row.completionRate)}%</td></tr>)}</tbody></table></div></section>
-      <section className="overflow-hidden rounded-[1.3rem] border border-slate-900/5 bg-white/60"><div className="p-4"><h3 className="text-sm font-black">Question-bank outliers</h3><p className="text-xs font-semibold text-slate-500">Easy questions below 30% accuracy and hard questions above 95%.</p></div><div className="max-h-64 overflow-auto"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-white"><tr><th className="px-4 py-2">Question</th><th>Difficulty</th><th>Attempts</th><th>Accuracy</th></tr></thead><tbody>{outliers.length ? outliers.map((row) => <tr key={String(row.questionId)} className="border-t border-slate-900/5"><td className="max-w-56 px-4 py-2 font-bold">{String(row.question)}</td><td>{String(row.difficulty)}</td><td>{String(row.attempts)}</td><td>{String(row.accuracy)}%</td></tr>) : <tr><td colSpan={4} className="px-4 py-5 font-bold text-emerald-700">No suspicious difficulty outliers detected.</td></tr>}</tbody></table></div></section>
-    </div>
-    <div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Confidence vs accuracy</h3><div className="mt-3"><MiniBars rows={confidence} valueKey="accuracy" /></div></section><section className="rounded-[1.3rem] border border-slate-900/5 bg-white/60 p-4"><h3 className="text-sm font-black">Quiz session funnel</h3><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">{Object.entries(quizStatuses).map(([status, value]) => <div key={status} className="rounded-xl bg-slate-50 p-2"><strong className="block text-lg">{String(value)}</strong><span className="text-[10px] font-black uppercase text-slate-500">{status.replaceAll("_", " ")}</span></div>)}</div></section></div>
+    {activeDetail ? <AnalyticsModal {...modalMap[activeDetail]} onClose={() => setActiveDetail(null)} /> : null}
   </section>;
 }
-
 function ConnectedApplicationPanel({ project, state, readOnly }: { project: string; state?: SkQuizIntegrationState; readOnly: boolean }) {
   const root = getRecord(state?.data);
   const connected = Boolean(state?.connected);
