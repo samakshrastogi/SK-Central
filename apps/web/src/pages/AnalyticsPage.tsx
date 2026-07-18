@@ -466,10 +466,18 @@ function QuizIntelligencePanel({ state, activities }: { state: SkQuizIntegration
     const plan = getRows(item.plan);
     const priorityCount = pickNumber(item, ['priorityCount'], 0);
     const visitedSteps = Array.isArray(item.visitedSteps) ? item.visitedSteps.map(String) : [];
+    const hasTrackedSteps = visitedSteps.length > 0;
     const hasTime = pickNumber(item, ['dailyHours'], 0) > 0 && pickNumber(item, ['weeklyHours'], 0) > 0 && Boolean(item.quizTime);
     return exams.map((exam) => {
       const examPlan = plan.filter((task) => String(task.examName ?? '') === exam);
-      return { identity, exam, details: visitedSteps.includes('details') || exams.length > 0, priorities: visitedSteps.includes('subjects') || priorityCount > 0 || examPlan.length > 0, time: visitedSteps.includes('time') || hasTime || examPlan.length > 0, plan: visitedSteps.includes('plan') || examPlan.length > 0 };
+      return {
+        identity,
+        exam,
+        details: hasTrackedSteps ? visitedSteps.includes('details') : exams.length > 0,
+        priorities: hasTrackedSteps ? visitedSteps.includes('subjects') : priorityCount > 0 || examPlan.length > 0,
+        time: hasTrackedSteps ? visitedSteps.includes('time') : hasTime || examPlan.length > 0,
+        plan: hasTrackedSteps ? visitedSteps.includes('plan') : examPlan.length > 0
+      };
     });
   });
   const completePlanUsers = new Set(planProgressRows.filter((row) => row.plan).map((row) => row.identity.email)).size;
