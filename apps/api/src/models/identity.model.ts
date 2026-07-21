@@ -54,6 +54,33 @@ export const IdentityActivityModel = model(
   )
 );
 
+export const IdentityRememberedBrowserModel = model(
+  'IdentityRememberedBrowser',
+  new Schema(
+    {
+      userId: { type: Schema.Types.ObjectId, ref: 'IdentityUser', required: true, index: true },
+      tokenHash: { type: String, required: true, unique: true, index: true },
+      expiresAt: { type: Date, required: true, index: true },
+      lastUsedAt: { type: Date, default: Date.now },
+      userAgent: String
+    },
+    timestamps
+  )
+);
+
+export const IdentityPasswordResetGrantModel = model(
+  'IdentityPasswordResetGrant',
+  new Schema(
+    {
+      email: { type: String, required: true, lowercase: true, trim: true, index: true },
+      tokenHash: { type: String, required: true, unique: true, index: true },
+      expiresAt: { type: Date, required: true, index: { expires: 0 } },
+      consumedAt: { type: Date }
+    },
+    timestamps
+  )
+);
+
 export const IdentityOtpModel = model(
   'IdentityOtp',
   new Schema(

@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { createAppToken, forgotPassword, getIdentityAnalytics, getRememberedIdentityRecords, getSession, listSessions, loginWithPassword, logout, recordUsage, registerIdentity, resendVerificationOtp, resetPassword, revokeUser, setUserRole, updateIdentityProfile, verifyIdentityEmail } from '@/services/auth.service.js';
+import { createAppToken, forgotPassword, getIdentityAnalytics, getRememberedIdentityRecords, getSession, listSessions, loginWithPassword, loginWithRememberedBrowser, logout, recordUsage, registerIdentity, resendVerificationOtp, resetPassword, revokeUser, setUserRole, updateIdentityProfile, verifyIdentityEmail, verifyPasswordResetOtp } from '@/services/auth.service.js';
 import { verifySignedToken } from '@/services/token.service.js';
 import { ok } from '@/utils/apiResponse.js';
 
@@ -15,8 +15,17 @@ const requireCurrentSession = async (req: Parameters<RequestHandler>[0]) => {
 
 export const login: RequestHandler = async (req, res, next) => {
   try {
-    const user = await loginWithPassword(req.body, req, res);
-    ok(res, { user }, 'Logged in');
+    const result = await loginWithPassword(req.body, req, res);
+    ok(res, result, 'Logged in');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rememberedLogin: RequestHandler = async (req, res, next) => {
+  try {
+    const user = await loginWithRememberedBrowser(req.body, req, res);
+    ok(res, { user }, 'Remembered browser signed in');
   } catch (error) {
     next(error);
   }
@@ -32,8 +41,8 @@ export const register: RequestHandler = async (req, res, next) => {
 
 export const verifyEmail: RequestHandler = async (req, res, next) => {
   try {
-    const user = await verifyIdentityEmail(req.body, req, res);
-    ok(res, { user }, 'Email verified');
+    const result = await verifyIdentityEmail(req.body, req, res);
+    ok(res, result, 'Email verified');
   } catch (error) {
     next(error);
   }
@@ -50,6 +59,14 @@ export const resendVerification: RequestHandler = async (req, res, next) => {
 export const forgot: RequestHandler = async (req, res, next) => {
   try {
     ok(res, await forgotPassword(req.body), 'Password reset OTP sent if the account exists');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyResetOtp: RequestHandler = async (req, res, next) => {
+  try {
+    ok(res, await verifyPasswordResetOtp(req.body), 'Password reset OTP verified');
   } catch (error) {
     next(error);
   }

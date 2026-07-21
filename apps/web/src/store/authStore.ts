@@ -18,6 +18,9 @@ export interface RememberedIdentity {
   name: string;
   avatarUrl?: string;
   avatarInitials?: string;
+  token?: string;
+  rememberedAt?: string;
+  expiresAt?: string;
 }
 
 const rememberedKey = 'sk-central-remembered-identities';
@@ -36,15 +39,25 @@ export const getRememberedIdentities = (): RememberedIdentity[] => {
   if (!canUseStorage()) return [];
   try {
     const parsed = JSON.parse(window.localStorage.getItem(rememberedKey) ?? '[]') as RememberedIdentity[];
-    return parsed.filter((identity) => identity.email && identity.name).slice(0, 6);
+    const now = Date.now();
+    return parsed.filter((identity) => identity.email && identity.name && (!identity.expiresAt || new Date(identity.expiresAt).getTime() > now)).slice(0, 6);
   } catch {
     return [];
   }
 };
 
-export const rememberIdentity = (user: Pick<CentralUser, 'email' | 'name' | 'avatarUrl' | 'avatarInitials'>) => {
+export const rememberIdentity = (user: Pick<CentralUser, 'email' | 'name' | 'avatarUrl' | 'avatarInitials'>, token?: string) => {
   if (!canUseStorage()) return;
-  const identity = { email: user.email, name: user.name };
+  const existing = getRememberedIdentities().find((item) => item.email === user.email);
+  const identity: RememberedIdentity = {
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+    avatarInitials: user.avatarInitials,
+    token: token ?? existing?.token,
+    rememberedAt: existing?.rememberedAt ?? new Date().toISOString(),
+    expiresAt: existing?.expiresAt ?? new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString()
+  };
   const next = [identity, ...getRememberedIdentities().filter((item) => item.email !== user.email)].slice(0, 6);
   window.localStorage.setItem(rememberedKey, JSON.stringify(next));
 };
@@ -60,11 +73,23 @@ export const validateRememberedIdentities = async () => {
       avatarUrl: identity.avatarUrl,
       avatarInitials: identity.avatarInitials
     }));
-    window.localStorage.setItem(rememberedKey, JSON.stringify(valid.map(({ email, name }) => ({ email, name }))));
-    return valid;
+    const merged = valid.map((identity) => {
+      const local = remembered.find((item) => item.email === identity.email);
+      return { ...local, ...identity, token: local?.token, rememberedAt: local?.rememberedAt, expiresAt: local?.expiresAt };
+    });
+    window.localStorage.setItem(rememberedKey, JSON.stringify(merged));
+    return merged;
   } catch {
     return remembered;
   }
+};
+
+export const removeRememberedIdentities = (emails: string[]) => {
+  if (!canUseStorage()) return [];
+  const removing = new Set(emails.map((email) => email.trim().toLowerCase()));
+  const next = getRememberedIdentities().filter((identity) => !removing.has(identity.email.toLowerCase()));
+  window.localStorage.setItem(rememberedKey, JSON.stringify(next));
+  return next;
 };
 
 interface AuthStore {
@@ -72,6 +97,7 @@ interface AuthStore {
   loading: boolean;
   initialized: boolean;
   login: (email: string, password: string) => Promise<void>;
+  rememberedLogin: (identity: RememberedIdentity) => Promise<void>;
   loadSession: () => Promise<CentralUser | null>;
   logout: (global?: boolean) => Promise<void>;
 }
@@ -84,7 +110,18 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ loading: true });
     try {
       const response = await api.post('/auth/login', { email, password });
-      rememberIdentity(response.data.data.user);
+      rememberIdentity(response.data.data.user, response.data.data.rememberedToken);
+      set({ user: response.data.data.user, initialized: true });
+    } finally {
+      set({ loading: false });
+    }
+  },
+  rememberedLogin: async (identity) => {
+    if (!identity.token) throw new Error('Password confirmation required');
+    set({ loading: true });
+    try {
+      const response = await api.post('/auth/remembered-login', { token: identity.token });
+      rememberIdentity(response.data.data.user, identity.token);
       set({ user: response.data.data.user, initialized: true });
     } finally {
       set({ loading: false });

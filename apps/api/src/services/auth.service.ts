@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { env } from '@/config/env.js';
-import { IdentityActivityModel, IdentityAuditLogModel, IdentityOtpModel, IdentitySessionModel, IdentityUserModel } from '@/models/identity.model.js';
+import { IdentityActivityModel, IdentityAuditLogModel, IdentityOtpModel, IdentityPasswordResetGrantModel, IdentityRememberedBrowserModel, IdentitySessionModel, IdentityUserModel } from '@/models/identity.model.js';
 import { sendOtpEmail } from '@/services/mail.service.js';
 import { createOpaqueToken, hashPassword, hashToken, signAppToken, verifyPassword } from '@/services/token.service.js';
 
@@ -21,6 +21,7 @@ type IdentityUserDocument = {
 
 const sharedCookieDomain = env.SSO_COOKIE_DOMAIN ?? (env.NODE_ENV === 'production' ? '.sk-hub.in' : undefined);
 const sharedCookieName = `${env.SSO_COOKIE_NAME}_shared`;
+const REMEMBERED_BROWSER_DAYS = 3650;
 
 const cookieBaseOptions = () => ({
   httpOnly: true,
@@ -126,6 +127,18 @@ async function establishSession(user: IdentityUserDocument | null, req: Request,
   return getPublicUser(user);
 }
 
+async function issueRememberedBrowserToken(user: IdentityUserDocument, req: Request) {
+  const rawToken = createOpaqueToken();
+  await IdentityRememberedBrowserModel.create({
+    userId: user._id,
+    tokenHash: hashToken(rawToken),
+    expiresAt: new Date(Date.now() + REMEMBERED_BROWSER_DAYS * 24 * 60 * 60 * 1000),
+    lastUsedAt: new Date(),
+    userAgent: req.headers['user-agent']
+  });
+  return rawToken;
+}
+
 export async function loginWithPassword(input: { email: string; password: string }, req: Request, res: Response) {
   if (!input?.email || !input?.password) {
     const error = new Error('Email and password are required') as Error & { statusCode?: number };
@@ -144,6 +157,34 @@ export async function loginWithPassword(input: { email: string; password: string
     error.statusCode = 403;
     throw error;
   }
+  const publicUser = await establishSession(user, req, res);
+  const rememberedToken = await issueRememberedBrowserToken(user, req);
+  return { user: publicUser, rememberedToken };
+}
+
+export async function loginWithRememberedBrowser(input: { token?: string }, req: Request, res: Response) {
+  if (!input?.token) {
+    const error = new Error('Remembered browser credential is required') as Error & { statusCode?: number };
+    error.statusCode = 400;
+    throw error;
+  }
+  const remembered = await IdentityRememberedBrowserModel.findOne({
+    tokenHash: hashToken(input.token),
+    expiresAt: { $gt: new Date() }
+  }).populate('userId', publicUserFields);
+  if (!remembered) {
+    const error = new Error('This remembered account needs password confirmation') as Error & { statusCode?: number };
+    error.statusCode = 401;
+    throw error;
+  }
+  const user = remembered.userId as unknown as IdentityUserDocument;
+  if (!user || user.disabledAt) {
+    const error = new Error('This account is unavailable') as Error & { statusCode?: number };
+    error.statusCode = 401;
+    throw error;
+  }
+  remembered.lastUsedAt = new Date();
+  await remembered.save();
   return establishSession(user, req, res);
 }
 
@@ -196,7 +237,9 @@ export async function verifyIdentityEmail(input: { email: string; otp: string },
   }
   user.emailVerifiedAt = user.emailVerifiedAt ?? new Date();
   await user.save();
-  return establishSession(user, req, res);
+  const publicUser = await establishSession(user, req, res);
+  const rememberedToken = await issueRememberedBrowserToken(user, req);
+  return { user: publicUser, rememberedToken };
 }
 
 export async function resendVerificationOtp(input: { email: string }) {
@@ -213,7 +256,20 @@ export async function forgotPassword(input: { email: string }) {
   return { sent: true };
 }
 
-export async function resetPassword(input: { email: string; otp: string; password: string; confirmPassword?: string }) {
+export async function verifyPasswordResetOtp(input: { email: string; otp: string }) {
+  const email = normalizeEmail(input.email);
+  await verifyOtp(email, 'reset_password', input.otp);
+  const resetToken = createOpaqueToken();
+  await IdentityPasswordResetGrantModel.updateMany({ email, consumedAt: { $exists: false } }, { consumedAt: new Date() });
+  await IdentityPasswordResetGrantModel.create({
+    email,
+    tokenHash: hashToken(resetToken),
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+  });
+  return { resetToken, expiresInSeconds: 600 };
+}
+
+export async function resetPassword(input: { email: string; otp?: string; resetToken?: string; password: string; confirmPassword?: string }) {
   if (!input?.password || input.password.length < 8) {
     const error = new Error('Password must be at least 8 characters') as Error & { statusCode?: number };
     error.statusCode = 400;
@@ -225,7 +281,27 @@ export async function resetPassword(input: { email: string; otp: string; passwor
     throw error;
   }
   const email = normalizeEmail(input.email);
-  await verifyOtp(email, 'reset_password', input.otp);
+  if (input.resetToken) {
+    const grant = await IdentityPasswordResetGrantModel.findOne({
+      email,
+      tokenHash: hashToken(input.resetToken),
+      consumedAt: { $exists: false },
+      expiresAt: { $gt: new Date() }
+    });
+    if (!grant) {
+      const error = new Error('Password reset verification expired. Request a new OTP.') as Error & { statusCode?: number };
+      error.statusCode = 400;
+      throw error;
+    }
+    grant.consumedAt = new Date();
+    await grant.save();
+  } else if (input.otp) {
+    await verifyOtp(email, 'reset_password', input.otp);
+  } else {
+    const error = new Error('Verify your reset OTP before choosing a new password') as Error & { statusCode?: number };
+    error.statusCode = 400;
+    throw error;
+  }
   const user = await IdentityUserModel.findOne({ email });
   if (!user) {
     const error = new Error('Account not found') as Error & { statusCode?: number };
@@ -237,6 +313,8 @@ export async function resetPassword(input: { email: string; otp: string; passwor
   user.passwordSalt = password.salt;
   user.emailVerifiedAt = user.emailVerifiedAt ?? new Date();
   await user.save();
+  await IdentityRememberedBrowserModel.deleteMany({ userId: user._id });
+  await IdentitySessionModel.updateMany({ userId: user._id }, { revokedAt: new Date() });
   return { updated: true };
 }
 
@@ -346,7 +424,7 @@ export async function requireAdminWriteAccess(req: Request) {
 export async function getIdentityAnalytics(req: Request) {
   await requireAdminReadAccess(req);
   const users = await IdentityUserModel.find().select('_id email name role permissions temporaryAdminUntil disabledAt lastLoginAt createdAt').sort({ createdAt: 1 }).lean();
-  const activities = await IdentityActivityModel.find().populate('userId', '_id email name').sort({ createdAt: -1 }).limit(5000).lean();
+  const activities = await IdentityActivityModel.find().populate('userId', '_id email name').sort({ createdAt: -1 }).lean();
   const audits = await IdentityAuditLogModel.find().populate('actorUserId', 'name email').populate('targetUserId', 'name email').sort({ createdAt: -1 }).limit(100).lean();
   return { users, activities, audits };
 }

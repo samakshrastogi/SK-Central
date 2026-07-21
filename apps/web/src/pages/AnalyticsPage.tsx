@@ -11,6 +11,7 @@ interface IdentityUserRow {
   name: string;
   email: string;
   role: string;
+  createdAt?: string;
 }
 
 interface ActivityRow {
@@ -259,8 +260,8 @@ export default function AnalyticsPage() {
   const modalMap = {
     users: {
       title: 'Unique Users',
-      columns: ['S.no.', 'User name', 'Email ID'],
-      rows: data.users.map((user, index) => [index + 1, user.name, user.email])
+      columns: ['S.no.', 'User name', 'Email ID', 'Joined at'],
+      rows: data.users.map((user, index) => [index + 1, user.name, user.email, user.createdAt ? new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(user.createdAt)) : 'Not available'])
     },
     logins: {
       title: 'Login Count',

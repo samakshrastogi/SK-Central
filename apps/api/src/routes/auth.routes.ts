@@ -1,13 +1,15 @@
 import { Router } from 'express';
-import { appToken, forgot, globalSignOut, identityAnalytics, login, me, refresh, register, rememberedIdentities, resendVerification, reset, revokeUserSessions, sessions, signOut, updateProfile, updateUserRole, usage, validateToken, verifyEmail } from '@/controllers/auth.controller.js';
+import { appToken, forgot, globalSignOut, identityAnalytics, login, me, refresh, register, rememberedIdentities, rememberedLogin, resendVerification, reset, revokeUserSessions, sessions, signOut, updateProfile, updateUserRole, usage, validateToken, verifyEmail, verifyResetOtp } from '@/controllers/auth.controller.js';
 
 export const authRoutes = Router();
 
 authRoutes.post('/login', login);
+authRoutes.post('/remembered-login', rememberedLogin);
 authRoutes.post('/register', register);
 authRoutes.post('/verify-email', verifyEmail);
 authRoutes.post('/resend-verification', resendVerification);
 authRoutes.post('/forgot-password', forgot);
+authRoutes.post('/verify-reset-otp', verifyResetOtp);
 authRoutes.post('/reset-password', reset);
 authRoutes.post('/remembered-identities', rememberedIdentities);
 authRoutes.get('/me', me);
