@@ -19,8 +19,10 @@ interface ActivityRow {
   type: 'login' | 'visit' | 'active_time';
   dateKey: string;
   durationSeconds?: number;
+  count?: number;
   userId?: IdentityUserRow;
   createdAt?: string;
+  lastCreatedAt?: string;
 }
 
 interface IdentityAnalytics {
@@ -84,8 +86,11 @@ const buildVisitRows = (activities: ActivityRow[], platform: string) => {
     const tenMinuteBucket = Number.isFinite(createdAt) ? String(Math.floor(createdAt / 600_000)) : item.dateKey;
     const key = `${user}-${email}-${item.dateKey}`;
     const row = grouped.get(key) ?? { user, email, date: item.dateKey, count: 0, buckets: new Set<string>() };
-    row.buckets.add(tenMinuteBucket);
-    row.count = row.buckets.size;
+    if (typeof item.count === 'number') row.count += item.count;
+    else {
+      row.buckets.add(tenMinuteBucket);
+      row.count = row.buckets.size;
+    }
     grouped.set(key, row);
   });
   return [...grouped.values()].map((row) => ({ user: row.user, email: row.email, date: row.date, count: row.count }));
@@ -159,18 +164,29 @@ export default function AnalyticsPage() {
   }, [applications]);
 
   useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
     const load = async () => {
-      const response = await api.get('/auth/identity-analytics');
-      setData(response.data.data);
-      if (initialActiveSeconds.current === null) {
-        initialActiveSeconds.current = (response.data.data.activities as ActivityRow[])
-          .filter((item) => item.type === 'active_time')
-          .reduce((sum, item) => sum + (item.durationSeconds ?? 0), 0);
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const response = await api.get('/auth/identity-analytics', { timeout: 45_000 });
+        if (cancelled) return;
+        setData(response.data.data);
+        if (initialActiveSeconds.current === null) {
+          initialActiveSeconds.current = (response.data.data.activities as ActivityRow[])
+            .filter((item) => item.type === 'active_time')
+            .reduce((sum, item) => sum + (item.durationSeconds ?? 0), 0);
+        }
+      } catch {
+        // Keep the last successful snapshot during a cold start or temporary network delay.
+      } finally {
+        inFlight = false;
       }
     };
     void load();
     const interval = window.setInterval(load, 30_000);
-    return () => window.clearInterval(interval);
+    return () => { cancelled = true; window.clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -213,7 +229,7 @@ export default function AnalyticsPage() {
       const email = item.userId?.email ?? '';
       const key = `${user}-${item.dateKey}`;
       const row = grouped.get(key) ?? { user, email, date: item.dateKey, count: 0 };
-      row.count += 1;
+      row.count += item.count ?? 1;
       grouped.set(key, row);
     });
     return [...grouped.values()];
@@ -444,10 +460,11 @@ function QuizIntelligencePanel({ state, activities }: { state: SkQuizIntegration
   activities.filter((activity) => activity.type === 'visit' && activity.platform === 'sk-quiz' && activity.userId).forEach((activity) => {
     const identity = activity.userId as IdentityUserRow;
     const key = identity._id || identity.email;
-    const timestamp = activity.createdAt ? new Date(activity.createdAt).getTime() : new Date(`${activity.dateKey}T00:00:00`).getTime();
-    const existing = visitorMap.get(key) ?? { name: identity.name || 'Unknown user', email: identity.email || 'No email', firstVisitAt: timestamp, lastVisitAt: timestamp, dates: new Set<string>() };
-    existing.firstVisitAt = Math.min(existing.firstVisitAt, timestamp);
-    existing.lastVisitAt = Math.max(existing.lastVisitAt, timestamp);
+    const firstTimestamp = activity.createdAt ? new Date(activity.createdAt).getTime() : new Date(`${activity.dateKey}T00:00:00`).getTime();
+    const lastTimestamp = activity.lastCreatedAt ? new Date(activity.lastCreatedAt).getTime() : firstTimestamp;
+    const existing = visitorMap.get(key) ?? { name: identity.name || 'Unknown user', email: identity.email || 'No email', firstVisitAt: firstTimestamp, lastVisitAt: lastTimestamp, dates: new Set<string>() };
+    existing.firstVisitAt = Math.min(existing.firstVisitAt, firstTimestamp);
+    existing.lastVisitAt = Math.max(existing.lastVisitAt, lastTimestamp);
     existing.dates.add(activity.dateKey);
     visitorMap.set(key, existing);
   });

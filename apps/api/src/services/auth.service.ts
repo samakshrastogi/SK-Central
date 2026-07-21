@@ -22,6 +22,8 @@ type IdentityUserDocument = {
 const sharedCookieDomain = env.SSO_COOKIE_DOMAIN ?? (env.NODE_ENV === 'production' ? '.sk-hub.in' : undefined);
 const sharedCookieName = `${env.SSO_COOKIE_NAME}_shared`;
 const REMEMBERED_BROWSER_DAYS = 3650;
+const IDENTITY_ANALYTICS_CACHE_MS = 20_000;
+let identityAnalyticsCache: { expiresAt: number; value: unknown } | null = null;
 
 const cookieBaseOptions = () => ({
   httpOnly: true,
@@ -439,10 +441,62 @@ export async function requireAdminWriteAccess(req: Request) {
 
 export async function getIdentityAnalytics(req: Request) {
   await requireAdminReadAccess(req);
-  const users = await IdentityUserModel.find().select('_id email name role permissions temporaryAdminUntil disabledAt lastLoginAt createdAt').sort({ createdAt: 1 }).lean();
-  const activities = await IdentityActivityModel.find().populate('userId', '_id email name').sort({ createdAt: -1 }).lean();
-  const audits = await IdentityAuditLogModel.find().populate('actorUserId', 'name email').populate('targetUserId', 'name email').sort({ createdAt: -1 }).limit(100).lean();
-  return { users, activities, audits };
+  if (identityAnalyticsCache && identityAnalyticsCache.expiresAt > Date.now()) return identityAnalyticsCache.value;
+
+  const [users, activities, audits] = await Promise.all([
+    IdentityUserModel.find().select('_id email name role permissions temporaryAdminUntil disabledAt lastLoginAt createdAt').sort({ createdAt: 1 }).lean(),
+    IdentityActivityModel.aggregate([
+      {
+        $set: {
+          visitBucket: {
+            $cond: [
+              { $eq: ['$type', 'visit'] },
+              { $dateTrunc: { date: '$createdAt', unit: 'minute', binSize: 10 } },
+              null
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: { userId: '$userId', platform: '$platform', type: '$type', dateKey: '$dateKey', visitBucket: '$visitBucket' },
+          durationSeconds: { $sum: { $ifNull: ['$durationSeconds', 0] } },
+          rawCount: { $sum: 1 },
+          createdAt: { $min: '$createdAt' },
+          lastCreatedAt: { $max: '$createdAt' }
+        }
+      },
+      {
+        $group: {
+          _id: { userId: '$_id.userId', platform: '$_id.platform', type: '$_id.type', dateKey: '$_id.dateKey' },
+          durationSeconds: { $sum: '$durationSeconds' },
+          count: { $sum: { $cond: [{ $eq: ['$_id.type', 'visit'] }, 1, '$rawCount'] } },
+          createdAt: { $min: '$createdAt' },
+          lastCreatedAt: { $max: '$lastCreatedAt' }
+        }
+      },
+      { $lookup: { from: IdentityUserModel.collection.name, localField: '_id.userId', foreignField: '_id', as: 'user' } },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          platform: '$_id.platform',
+          type: '$_id.type',
+          dateKey: '$_id.dateKey',
+          durationSeconds: 1,
+          count: 1,
+          createdAt: 1,
+          lastCreatedAt: 1,
+          userId: { _id: '$user._id', name: '$user.name', email: '$user.email' }
+        }
+      },
+      { $sort: { dateKey: -1, createdAt: -1 } }
+    ]),
+    IdentityAuditLogModel.find().populate('actorUserId', 'name email').populate('targetUserId', 'name email').sort({ createdAt: -1 }).limit(100).lean()
+  ]);
+  const value = { users, activities, audits };
+  identityAnalyticsCache = { value, expiresAt: Date.now() + IDENTITY_ANALYTICS_CACHE_MS };
+  return value;
 }
 export async function setUserRole(req: Request, input: { userId: string; role: 'user' | 'admin'; temporaryAdminHours?: number }) {
   const current = await requireAdminWriteAccess(req);
