@@ -206,3 +206,29 @@ export const manageSkMailpilotApproval: RequestHandler = async (req, res) => {
   }
   ok(res, { request: body?.data ?? null }, `MailPilot request ${decision === 'approve' ? 'approved' : 'rejected'}.`);
 };
+
+export const getSkMailpilotSyncSettings: RequestHandler = async (req, res) => {
+  const user = await requireCentralAdmin(req);
+  if (!user || !env.SK_QUIZ_SERVICE_TOKEN) {
+    res.status(!user ? 403 : 503).json({ success: false, message: !user ? 'SK Central administrator access is required.' : 'The shared integration service token is not configured.' });
+    return;
+  }
+  const response = await fetch(`${trimSlash(env.SK_MAILPILOT_API_URL)}/audit/central-settings`, { headers: mailpilotApprovalHeaders(user) });
+  const body = await response.json().catch(() => null) as { data?: unknown; error?: string } | null;
+  if (!response.ok) { res.status(response.status).json({ success: false, message: body?.error ?? 'Unable to load MailPilot sync settings.' }); return; }
+  ok(res, body?.data ?? {});
+};
+
+export const updateSkMailpilotSyncSettings: RequestHandler = async (req, res) => {
+  const user = await requireCentralAdmin(req, true);
+  if (!user || !env.SK_QUIZ_SERVICE_TOKEN) {
+    res.status(!user ? 403 : 503).json({ success: false, message: !user ? 'Full administrator access is required.' : 'The shared integration service token is not configured.' });
+    return;
+  }
+  const syncEmailLimit = Number(req.body?.syncEmailLimit);
+  if (!Number.isInteger(syncEmailLimit) || syncEmailLimit < 1 || syncEmailLimit > 100) { res.status(400).json({ success: false, message: 'Sync limit must be a whole number from 1 to 100.' }); return; }
+  const response = await fetch(`${trimSlash(env.SK_MAILPILOT_API_URL)}/audit/central-settings`, { method: 'PUT', headers: mailpilotApprovalHeaders(user), body: JSON.stringify({ syncEmailLimit }) });
+  const body = await response.json().catch(() => null) as { data?: unknown; error?: string } | null;
+  if (!response.ok) { res.status(response.status).json({ success: false, message: body?.error ?? 'Unable to update MailPilot sync settings.' }); return; }
+  ok(res, body?.data ?? {}, 'MailPilot sync limit updated.');
+};
