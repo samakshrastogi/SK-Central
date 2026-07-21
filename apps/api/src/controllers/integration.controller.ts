@@ -118,7 +118,7 @@ const connectedApplications: Record<ConnectedApplication, { baseUrl: string; pat
 };
 
 export const getConnectedApplicationAnalytics: RequestHandler = async (req, res) => {
-  await requireAdminReadAccess(req);
+  const current = await requireAdminReadAccess(req);
   const application = req.params.application as ConnectedApplication;
   const config = connectedApplications[application];
   if (!config) {
@@ -141,7 +141,16 @@ export const getConnectedApplicationAnalytics: RequestHandler = async (req, res)
       ok(res, { connected: false, status: response.status, source: url, data: null, message: `${config.label} analytics returned ${response.status}${isHtml ? " and an HTML page" : ""}.` });
       return;
     }
-    ok(res, { connected: true, status: response.status, source: url, data: body.data ?? body.stats ?? body, message: `Fetched realtime ${config.label} analytics.` });
+    let data = body.data ?? body.stats ?? body;
+    if (application === 'sk-mailpilot' && current.user.role !== 'admin' && data && typeof data === 'object' && !Array.isArray(data)) {
+      const mailpilot = data as Record<string, unknown>;
+      const summary = mailpilot.summary && typeof mailpilot.summary === 'object' && !Array.isArray(mailpilot.summary) ? { ...(mailpilot.summary as Record<string, unknown>) } : undefined;
+      const details = mailpilot.details && typeof mailpilot.details === 'object' && !Array.isArray(mailpilot.details) ? { ...(mailpilot.details as Record<string, unknown>) } : undefined;
+      if (summary) delete summary.pendingApprovals;
+      if (details) delete details.approvalRequests;
+      data = { ...mailpilot, ...(summary ? { summary } : {}), ...(details ? { details } : {}) };
+    }
+    ok(res, { connected: true, status: response.status, source: url, data, message: `Fetched realtime ${config.label} analytics.` });
   } catch (error) {
     ok(res, { connected: false, status: 0, source: url, data: null, message: error instanceof Error ? error.message : `Unable to reach ${config.label}.` });
   }
@@ -162,7 +171,7 @@ const requireCentralAdmin = async (req: Request, write = false) => {
 };
 
 export const getSkMailpilotApprovalRequests: RequestHandler = async (req, res) => {
-  const user = await requireCentralAdmin(req);
+  const user = await requireCentralAdmin(req, true);
   if (!user) {
     res.status(403).json({ success: false, message: 'SK Central administrator access is required.' });
     return;

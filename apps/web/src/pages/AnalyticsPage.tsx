@@ -589,7 +589,8 @@ function QuizIntelligencePanel({ state, activities }: { state: SkQuizIntegration
     {activeDetail ? <AnalyticsModal {...modalMap[activeDetail]} onClose={() => setActiveDetail(null)} /> : null}
   </section>;
 }
-function MailpilotSyncPolicy({ initialLimit, readOnly }: { initialLimit: number; readOnly: boolean }) {
+function MailpilotSyncPolicy({ initialLimit }: { initialLimit: number }) {
+  const [open, setOpen] = useState(false);
   const [limit, setLimit] = useState(initialLimit);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -598,22 +599,64 @@ function MailpilotSyncPolicy({ initialLimit, readOnly }: { initialLimit: number;
     setSaving(true); setMessage('');
     try {
       const response = await api.put('/integrations/sk-mailpilot/sync-settings', { syncEmailLimit: limit });
-      setLimit(Number(response.data?.data?.syncEmailLimit ?? limit)); setMessage('Saved');
+      setLimit(Number(response.data?.data?.syncEmailLimit ?? limit)); setOpen(false);
     } catch (error: any) { setMessage(error?.response?.data?.message ?? 'Unable to save'); } finally { setSaving(false); }
   };
-  return <div className="mt-3 flex flex-wrap items-end gap-2 rounded-[1.2rem] border border-cyan-100 bg-cyan-50/60 p-3">
-    <label className="min-w-48 flex-1"><span className="mb-1 block text-xs font-black text-slate-700">Emails allowed per sync</span><input type="number" min={1} max={100} step={1} value={limit} onChange={(event) => setLimit(Math.min(100, Math.max(1, Number(event.target.value) || 1)))} disabled={readOnly} className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold" /></label>
-    {!readOnly ? <button type="button" onClick={() => void save()} disabled={saving} className="h-10 rounded-xl bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save limit'}</button> : null}
-    <p className="w-full text-xs font-semibold text-slate-500">This server-enforced limit applies to inbox and Sent-mail syncs for every MailPilot user.{message ? ` ${message}` : ''}</p>
-  </div>;
+  return <>
+    <button type="button" onClick={() => { setMessage(''); setOpen(true); }} className="inline-flex items-center gap-2 rounded-full bg-cyan-100 px-4 py-2 text-xs font-black text-cyan-800 shadow-sm"><Gauge size={17} /> Change limit</button>
+    {open ? <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-3 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+      <section className="w-full max-w-lg rounded-[1.75rem] bg-white p-5 shadow-2xl">
+        <header className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">SK MailPilot</p><h2 className="text-xl font-black text-slate-950">Change email sync limit</h2><p className="mt-1 text-sm font-semibold text-slate-500">Set how many inbox and Sent-mail messages every user may sync in one request.</p></div><button type="button" onClick={() => setOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100" aria-label="Close sync limit"><X size={18} /></button></header>
+        <label className="mt-5 block"><span className="mb-1 block text-xs font-black text-slate-700">Emails allowed per sync</span><input autoFocus type="number" min={1} max={100} step={1} value={limit} onChange={(event) => setLimit(Math.min(100, Math.max(1, Number(event.target.value) || 1)))} className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-bold" /></label>
+        {message ? <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{message}</p> : null}
+        <button type="button" onClick={() => void save()} disabled={saving} className="mt-5 h-11 w-full rounded-xl bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save limit'}</button>
+      </section>
+    </div> : null}
+  </>;
+}
+
+function MailpilotAnalyticsPanel({ state, readOnly }: { state?: SkQuizIntegrationState; readOnly: boolean }) {
+  type DetailKey = 'users' | 'mailboxes' | 'processed' | 'pending' | 'overdue' | 'health' | 'categories' | 'recent' | 'priority' | 'scheduled' | 'sent' | 'failed' | 'approvals';
+  const [activeDetail, setActiveDetail] = useState<DetailKey | null>(null);
+  const root = getRecord(state?.data); const connected = Boolean(state?.connected);
+  const summary = getRecord(root.summary); const health = getRecord(root.health); const settings = getRecord(root.settings); const details = getRecord(root.details);
+  const users = getRows(details.users); const mailboxes = getRows(details.activeMailboxes); const processed = getRows(details.processedEmails); const recent = getRows(details.recentEmails); const pending = getRows(details.pendingReplies); const overdue = getRows(details.overdueReplies); const priority = getRows(details.highPriority); const syncRuns = getRows(details.syncRuns); const scheduled = getRows(details.scheduledEmails); const approvals = getRows(details.approvalRequests); const categories = getRows(root.categoryDistribution);
+  const identityCell = (row: Record<string, unknown>) => { const identity = getRecord(row.userId); return pickString(identity, ['name'], 'Unknown user') + '\n' + pickString(identity, ['email'], 'No email'); };
+  const dateCell = (value: unknown) => { const date = new Date(String(value ?? '')); return Number.isNaN(date.getTime()) ? 'Not available' : new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date); };
+  const emailRows = (source: Array<Record<string, unknown>>) => source.map((row, index) => [index + 1, identityCell(row), pickString(row, ['subject'], 'No subject'), pickString(row, ['sender'], 'Unknown sender'), pickString(row, ['category'], 'other'), pickString(row, ['priority'], 'low'), dateCell(row.processedAt)] as AnalyticsCell[]);
+  const scheduledRows = (status: string) => scheduled.filter((row) => String(row.status) === status).map((row, index) => [index + 1, identityCell(row), Array.isArray(row.recipients) ? row.recipients.join(', ') : 'No recipients', pickString(row, ['subject'], 'No subject'), pickString(row, ['status'], status), dateCell(row.scheduledAt ?? row.lastSentAt ?? row.createdAt)] as AnalyticsCell[]);
+  const modalMap: Record<DetailKey, { title: string; columns: string[]; rows: AnalyticsCell[][]; footer?: string }> = {
+    users: { title: 'MailPilot Users', columns: ['S.no.', 'Name', 'Email ID', 'Role', 'Joined at'], rows: users.map((row, index) => [index + 1, pickString(row, ['name'], 'Unknown user'), pickString(row, ['email'], 'No email'), pickString(row, ['role'], 'member'), dateCell(row.createdAt)]), footer: 'MailPilot accounts included in live analytics.' },
+    mailboxes: { title: 'Connected Mailboxes', columns: ['S.no.', 'User', 'Mailbox', 'Display name', 'Primary', 'Connected at'], rows: mailboxes.map((row, index) => [index + 1, identityCell(row), pickString(row, ['email'], 'No email'), pickString(row, ['displayName'], 'Not set'), Boolean(row.isPrimary), dateCell(row.createdAt)]) },
+    processed: { title: 'Processed Emails', columns: ['S.no.', 'User', 'Subject', 'Sender', 'Category', 'Priority', 'Processed at'], rows: emailRows(processed), footer: 'Latest processed email records; message content is never exposed.' },
+    pending: { title: 'Pending Replies', columns: ['S.no.', 'User', 'Subject', 'Sender', 'Category', 'Priority', 'Processed at'], rows: emailRows(pending) },
+    overdue: { title: 'Overdue Replies', columns: ['S.no.', 'User', 'Subject', 'Sender', 'Category', 'Priority', 'Processed at'], rows: emailRows(overdue) },
+    health: { title: 'Synchronization Health', columns: ['S.no.', 'User', 'Status', 'Fetched', 'Processed', 'Failed', 'Duration', 'Run date'], rows: syncRuns.map((row, index) => [index + 1, identityCell(row), pickString(row, ['status'], 'Unknown'), pickNumber(row, ['fetchedCount'], 0), pickNumber(row, ['processedCount'], 0), pickNumber(row, ['failedCount'], 0), String(pickNumber(row, ['durationMs'], 0)) + ' ms', dateCell(row.createdAt)]), footer: 'Current successful-sync rate: ' + String(pickNumber(health, ['syncSuccessRate'], 0)) + '%.' },
+    categories: { title: 'Email Categories', columns: ['S.no.', 'Category', 'Emails', 'Share'], rows: categories.map((row, index) => { const count = pickNumber(row, ['value'], 0); const total = Math.max(1, pickNumber(summary, ['processedEmails'], 0)); return [index + 1, pickString(row, ['label'], 'other'), count, String(Math.round((count / total) * 100)) + '%']; }) },
+    recent: { title: 'Emails Processed in the Last 7 Days', columns: ['S.no.', 'User', 'Subject', 'Sender', 'Category', 'Priority', 'Processed at'], rows: emailRows(recent) },
+    priority: { title: 'High-priority Emails', columns: ['S.no.', 'User', 'Subject', 'Sender', 'Category', 'Priority', 'Processed at'], rows: emailRows(priority) },
+    scheduled: { title: 'Scheduled Emails', columns: ['S.no.', 'User', 'Recipients', 'Subject', 'Status', 'Scheduled for'], rows: scheduledRows('scheduled') },
+    sent: { title: 'Sent Emails', columns: ['S.no.', 'User', 'Recipients', 'Subject', 'Status', 'Sent at'], rows: scheduledRows('sent') },
+    failed: { title: 'Failed Emails', columns: ['S.no.', 'User', 'Recipients', 'Subject', 'Status', 'Failed at'], rows: scheduledRows('failed') },
+    approvals: { title: 'Mailbox Approval Summary', columns: ['S.no.', 'Requester', 'Requested mailbox', 'Status', 'Reviewed by', 'Requested at'], rows: approvals.map((row, index) => [index + 1, pickString(row, ['requesterName'], 'Requester') + '\n' + pickString(row, ['requesterEmail'], 'No email'), pickString(row, ['requestedAccountEmail'], 'No mailbox'), pickString(row, ['status'], 'pending'), pickString(row, ['approvedByEmail'], 'Pending'), dateCell(row.createdAt)]) }
+  };
+  const metrics: Array<{ key: DetailKey; label: string; value: string | number; hint: string }> = [
+    { key: 'users', label: 'Users', value: pickNumber(summary, ['users'], 0), hint: 'MailPilot accounts' }, { key: 'mailboxes', label: 'Connected mailboxes', value: pickNumber(summary, ['activeMailboxes'], 0), hint: 'Active Gmail connections' }, { key: 'processed', label: 'Processed emails', value: pickNumber(summary, ['processedEmails'], 0), hint: 'Indexed active mail' }, { key: 'pending', label: 'Pending replies', value: pickNumber(summary, ['pendingReplies'], 0), hint: 'Messages needing action' }, { key: 'overdue', label: 'Overdue replies', value: pickNumber(summary, ['overdueReplies'], 0), hint: 'Reply SLA at risk' }, { key: 'health', label: 'Sync health', value: String(pickNumber(health, ['syncSuccessRate'], 0)) + '%', hint: 'Successful mailbox syncs' }
+  ];
+  const secondary: Array<{ key: DetailKey; label: string; value: number }> = [['recent', 'Recent 7 days', 'recentEmails'], ['priority', 'High priority', 'highPriority'], ['scheduled', 'Scheduled', 'scheduled'], ['sent', 'Sent', 'sent'], ['failed', 'Failed', 'failed'], ...(!readOnly ? [['approvals', 'Pending approvals', 'pendingApprovals']] : [])].map(([key, label, valueKey]) => ({ key: key as DetailKey, label, value: pickNumber(summary, [valueKey], 0) }));
+  const actions = !readOnly ? <><MailpilotSyncPolicy initialLimit={pickNumber(settings, ['syncEmailLimit'], 25)} /><MailpilotApprovalManager /></> : undefined;
+  return <section className="glass rounded-[2rem] p-4 sm:p-5">
+    <LivePanelHeader connected={connected} message={state?.message ?? 'Loading SK MailPilot analytics.'} title="SK MailPilot operations" subtitle="Live mailbox adoption, processing throughput, reply workload, scheduling, and synchronization health." action={actions} />
+    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">{metrics.map((metric) => <button key={metric.key} type="button" onClick={() => setActiveDetail(metric.key)} className="rounded-[1.2rem] border border-slate-900/5 bg-white/70 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-lg"><strong className="block text-xl text-slate-950">{metric.value}</strong><span className="block text-xs font-black text-slate-600">{metric.label}</span><p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">{metric.hint}</p></button>)}</div>
+    <div className="mt-3 grid gap-3 lg:grid-cols-2"><button type="button" onClick={() => setActiveDetail('categories')} className="rounded-[1.3rem] bg-white/60 p-4 text-left transition hover:bg-white/80 hover:shadow-lg"><h3 className="text-sm font-black">Email categories</h3><div className="mt-3"><MiniBars rows={categories} valueKey="value" /></div></button><section className="grid grid-cols-2 gap-2 rounded-[1.3rem] bg-white/60 p-4">{secondary.map((item) => <button type="button" onClick={() => setActiveDetail(item.key)} key={item.key} className="rounded-xl bg-slate-50 p-3 text-left transition hover:bg-cyan-50 hover:shadow-sm"><strong className="block text-lg">{item.value}</strong><span className="text-[10px] font-black text-slate-500">{item.label}</span></button>)}</section></div>
+    {activeDetail ? <AnalyticsModal {...modalMap[activeDetail]} onClose={() => setActiveDetail(null)} /> : null}
+  </section>;
 }
 function ConnectedApplicationPanel({ project, state, readOnly }: { project: string; state?: SkQuizIntegrationState; readOnly: boolean }) {
   const root = getRecord(state?.data);
   const connected = Boolean(state?.connected);
   if (project === "sk-mailpilot") {
-    const summary = getRecord(root.summary); const health = getRecord(root.health); const settings = getRecord(root.settings);
-    const metrics: CompactMetric[] = [{ label: "Users", value: pickNumber(summary, ["users"], 0), hint: "MailPilot accounts" }, { label: "Connected mailboxes", value: pickNumber(summary, ["activeMailboxes"], 0), hint: "Active Gmail connections" }, { label: "Processed emails", value: pickNumber(summary, ["processedEmails"], 0), hint: "Indexed active mail" }, { label: "Pending replies", value: pickNumber(summary, ["pendingReplies"], 0), hint: "Messages needing action" }, { label: "Overdue replies", value: pickNumber(summary, ["overdueReplies"], 0), hint: "Reply SLA at risk" }, { label: "Sync health", value: `${pickNumber(health, ["syncSuccessRate"], 0)}%`, hint: "Successful mailbox syncs" }];
-    return <section className="glass rounded-[2rem] p-4 sm:p-5"><LivePanelHeader connected={connected} message={state?.message ?? "Loading SK MailPilot analytics."} title="SK MailPilot operations" subtitle="Live mailbox adoption, processing throughput, reply workload, scheduling, and synchronization health." action={<MailpilotApprovalManager readOnly={readOnly} />} /><MailpilotSyncPolicy initialLimit={pickNumber(settings, ['syncEmailLimit'], 25)} readOnly={readOnly} /><CompactMetrics metrics={metrics} /><div className="mt-3 grid gap-3 lg:grid-cols-2"><section className="rounded-[1.3rem] bg-white/60 p-4"><h3 className="text-sm font-black">Email categories</h3><div className="mt-3"><MiniBars rows={getRows(root.categoryDistribution)} valueKey="value" /></div></section><section className="grid grid-cols-2 gap-2 rounded-[1.3rem] bg-white/60 p-4">{[["Recent 7 days", "recentEmails"], ["High priority", "highPriority"], ["Scheduled", "scheduled"], ["Sent", "sent"], ["Failed", "failed"], ["Pending approvals", "pendingApprovals"]].map(([label, key]) => <div key={key} className="rounded-xl bg-slate-50 p-3"><strong className="block text-lg">{pickNumber(summary, [key], 0)}</strong><span className="text-[10px] font-black text-slate-500">{label}</span></div>)}</section></div></section>;
+    return <MailpilotAnalyticsPanel state={state} readOnly={readOnly} />;
   }
   if (project === "sk-chat") {
     const users = getRecord(root.users); const messages = getRecord(root.messages); const chats = getRecord(root.chats); const communities = getRecord(root.communities); const sessions = getRecord(root.sessions); const charts = getRecord(root.charts);
