@@ -188,6 +188,22 @@ export async function loginWithRememberedBrowser(input: { token?: string }, req:
   return establishSession(user, req, res);
 }
 
+export async function rememberCurrentBrowser(req: Request) {
+  const current = await getSession(req);
+  if (!current) {
+    const error = new Error('Authentication required') as Error & { statusCode?: number };
+    error.statusCode = 401;
+    throw error;
+  }
+  const user = await IdentityUserModel.findById(current.user.id);
+  if (!user || user.disabledAt) {
+    const error = new Error('This account is unavailable') as Error & { statusCode?: number };
+    error.statusCode = 401;
+    throw error;
+  }
+  return { rememberedToken: await issueRememberedBrowserToken(user, req) };
+}
+
 export async function registerIdentity(input: { name: string; email: string; password: string; confirmPassword?: string }) {
   if (!input?.name || !input?.email || !input?.password || input.password.length < 8) {
     const error = new Error('Name, valid email, and an 8+ character password are required') as Error & { statusCode?: number };

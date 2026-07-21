@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { createAppToken, forgotPassword, getIdentityAnalytics, getRememberedIdentityRecords, getSession, listSessions, loginWithPassword, loginWithRememberedBrowser, logout, recordUsage, registerIdentity, resendVerificationOtp, resetPassword, revokeUser, setUserRole, updateIdentityProfile, verifyIdentityEmail, verifyPasswordResetOtp } from '@/services/auth.service.js';
+import { createAppToken, forgotPassword, getIdentityAnalytics, getRememberedIdentityRecords, getSession, listSessions, loginWithPassword, loginWithRememberedBrowser, logout, recordUsage, registerIdentity, rememberCurrentBrowser, resendVerificationOtp, resetPassword, revokeUser, setUserRole, updateIdentityProfile, verifyIdentityEmail, verifyPasswordResetOtp } from '@/services/auth.service.js';
 import { verifySignedToken } from '@/services/token.service.js';
 import { ok } from '@/utils/apiResponse.js';
 
@@ -26,6 +26,14 @@ export const rememberedLogin: RequestHandler = async (req, res, next) => {
   try {
     const user = await loginWithRememberedBrowser(req.body, req, res);
     ok(res, { user }, 'Remembered browser signed in');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rememberBrowser: RequestHandler = async (req, res, next) => {
+  try {
+    ok(res, await rememberCurrentBrowser(req), 'Browser remembered');
   } catch (error) {
     next(error);
   }

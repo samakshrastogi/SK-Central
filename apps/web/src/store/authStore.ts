@@ -131,8 +131,20 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ loading: true });
     try {
       const response = await api.get('/auth/me');
-      if (response.data.data.user) rememberIdentity(response.data.data.user);
-      set({ user: response.data.data.user, loading: false, initialized: true });
+      const sessionUser = response.data.data.user as CentralUser | null;
+      if (sessionUser) {
+        const remembered = getRememberedIdentities().find((identity) => identity.email === sessionUser.email);
+        if (remembered?.token) rememberIdentity(sessionUser);
+        else {
+          try {
+            const upgrade = await api.post('/auth/remember-browser');
+            rememberIdentity(sessionUser, upgrade.data.data.rememberedToken);
+          } catch {
+            rememberIdentity(sessionUser);
+          }
+        }
+      }
+      set({ user: sessionUser, loading: false, initialized: true });
       return response.data.data.user;
     } catch {
       set({ user: null, loading: false, initialized: true });

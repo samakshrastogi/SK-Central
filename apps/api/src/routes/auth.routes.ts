@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { appToken, forgot, globalSignOut, identityAnalytics, login, me, refresh, register, rememberedIdentities, rememberedLogin, resendVerification, reset, revokeUserSessions, sessions, signOut, updateProfile, updateUserRole, usage, validateToken, verifyEmail, verifyResetOtp } from '@/controllers/auth.controller.js';
+import { appToken, forgot, globalSignOut, identityAnalytics, login, me, refresh, register, rememberBrowser, rememberedIdentities, rememberedLogin, resendVerification, reset, revokeUserSessions, sessions, signOut, updateProfile, updateUserRole, usage, validateToken, verifyEmail, verifyResetOtp } from '@/controllers/auth.controller.js';
 
 export const authRoutes = Router();
 
 authRoutes.post('/login', login);
 authRoutes.post('/remembered-login', rememberedLogin);
+authRoutes.post('/remember-browser', rememberBrowser);
 authRoutes.post('/register', register);
 authRoutes.post('/verify-email', verifyEmail);
 authRoutes.post('/resend-verification', resendVerification);
