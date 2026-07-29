@@ -386,34 +386,34 @@ function AnalyticsModal({ title, columns, rows, totals, footer, onClose }: { tit
   const filteredRows = rows.filter((row) => row.join(' ').toLowerCase().includes(query.toLowerCase()));
   const stickyLast = 'sticky right-0 z-10 border-l border-slate-900/10 bg-white/95 shadow-[-8px_0_16px_rgba(15,23,42,0.05)]';
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-3 backdrop-blur-sm sm:p-4" onMouseDown={onClose}>
-      <div className="glass flex max-h-[88vh] w-full max-w-7xl flex-col overflow-hidden rounded-[2rem]" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-900/10 p-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-2 backdrop-blur-sm sm:p-3" onMouseDown={onClose}>
+      <div className="glass flex max-h-[94dvh] w-full max-w-[96rem] flex-col overflow-hidden rounded-[1.5rem]" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-900/10 px-3 py-2.5">
           <div>
-            <h2 className="text-xl font-black text-slate-950">{title}</h2>
-            {footer ? <p className="text-xs font-bold text-slate-500">{footer}</p> : null}
+            <h2 className="text-lg font-black leading-tight text-slate-950">{title}</h2>
+            {footer ? <p className="mt-0.5 text-[11px] font-bold leading-4 text-slate-500">{footer}</p> : null}
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search table" className="h-10 min-w-0 flex-1 rounded-2xl border-slate-200 text-sm sm:w-64" />
-            <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-slate-950 text-white" aria-label={`Close ${title}`}><X size={18} /></button>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search table" className="h-9 min-w-0 flex-1 rounded-xl border-slate-200 px-3 text-xs sm:w-56" />
+            <button type="button" onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-950 text-white" aria-label={`Close ${title}`}><X size={17} /></button>
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto">
-          <table className="min-w-full w-max text-left text-sm">
-            <thead className="sticky top-0 z-20 bg-white/95 text-xs font-black uppercase text-slate-500 backdrop-blur">
-              <tr>{columns.map((column, index) => <th key={`${column}-${index}`} className={`whitespace-nowrap px-4 py-3 ${index === columns.length - 1 && column === 'Total' ? stickyLast : ''}`}>{column}</th>)}</tr>
+          <table className="min-w-full w-max border-separate border-spacing-0 text-left text-xs">
+            <thead className="sticky top-0 z-20 bg-white/95 text-[10px] font-black uppercase tracking-wide text-slate-500 backdrop-blur">
+              <tr>{columns.map((column, index) => <th key={`${column}-${index}`} className={`whitespace-nowrap border-b border-slate-900/10 px-3 py-2 ${index === columns.length - 1 && column === 'Total' ? stickyLast : ''}`}>{column}</th>)}</tr>
             </thead>
             <tbody>
               {filteredRows.length ? filteredRows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-t border-slate-900/5">
-                  {row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className={`whitespace-pre-line px-4 py-3 font-bold text-slate-700 ${cellIndex === columns.length - 1 && columns.at(-1) === 'Total' ? stickyLast : ''}`}>{typeof cell === 'boolean' ? <input type="checkbox" checked={cell} readOnly className="h-4 w-4 rounded border-slate-300 text-cyan-600" aria-label={cell ? 'Completed' : 'Not completed'} /> : cell}</td>)}
+                <tr key={rowIndex} className="odd:bg-white/25 transition-colors hover:bg-cyan-50/60">
+                  {row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className={`whitespace-pre-line border-b border-slate-900/5 px-3 py-2 font-bold leading-4 text-slate-700 ${cellIndex === columns.length - 1 && columns.at(-1) === 'Total' ? stickyLast : ''}`}>{typeof cell === 'boolean' ? <input type="checkbox" checked={cell} readOnly className="h-3.5 w-3.5 rounded border-slate-300 text-cyan-600" aria-label={cell ? 'Completed' : 'Not completed'} /> : cell}</td>)}
                 </tr>
               )) : (
-                <tr><td className="px-4 py-6 text-sm font-bold text-slate-500" colSpan={columns.length}>No matching data.</td></tr>
+                <tr><td className="px-3 py-6 text-center text-xs font-bold text-slate-500" colSpan={columns.length}>No matching data.</td></tr>
               )}
             </tbody>
             {totals ? <tfoot className="sticky bottom-0 z-20 border-t border-slate-900/10 bg-cyan-50/95 text-xs font-black text-slate-900 backdrop-blur">
-              <tr>{totals.map((cell, index) => <td key={`total-${index}`} className={`whitespace-nowrap px-4 py-3 ${index === columns.length - 1 && columns.at(-1) === 'Total' ? `${stickyLast} !bg-cyan-50` : ''}`}>{typeof cell === 'boolean' ? <input type="checkbox" checked={cell} readOnly className="h-4 w-4 rounded border-slate-300 text-cyan-600" aria-label={cell ? 'Completed' : 'Not completed'} /> : cell}</td>)}</tr>
+              <tr>{totals.map((cell, index) => <td key={`total-${index}`} className={`whitespace-nowrap border-b border-slate-900/10 px-3 py-2 ${index === columns.length - 1 && columns.at(-1) === 'Total' ? `${stickyLast} !bg-cyan-50` : ''}`}>{typeof cell === 'boolean' ? <input type="checkbox" checked={cell} readOnly className="h-3.5 w-3.5 rounded border-slate-300 text-cyan-600" aria-label={cell ? 'Completed' : 'Not completed'} /> : cell}</td>)}</tr>
             </tfoot> : null}
           </table>
         </div>
@@ -604,12 +604,12 @@ function MailpilotSyncPolicy({ initialLimit }: { initialLimit: number }) {
   };
   return <>
     <button type="button" onClick={() => { setMessage(''); setOpen(true); }} className="inline-flex items-center gap-2 rounded-full bg-cyan-100 px-4 py-2 text-xs font-black text-cyan-800 shadow-sm"><Gauge size={17} /> Change limit</button>
-    {open ? <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-3 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
-      <section className="w-full max-w-lg rounded-[1.75rem] bg-white p-5 shadow-2xl">
-        <header className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-700">SK MailPilot</p><h2 className="text-xl font-black text-slate-950">Change email sync limit</h2><p className="mt-1 text-sm font-semibold text-slate-500">Set how many inbox and Sent-mail messages every user may sync in one request.</p></div><button type="button" onClick={() => setOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100" aria-label="Close sync limit"><X size={18} /></button></header>
-        <label className="mt-5 block"><span className="mb-1 block text-xs font-black text-slate-700">Emails allowed per sync</span><input autoFocus type="number" min={1} max={100} step={1} value={limit} onChange={(event) => setLimit(Math.min(100, Math.max(1, Number(event.target.value) || 1)))} className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-bold" /></label>
+    {open ? <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-2 backdrop-blur-sm sm:p-3" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+      <section className="w-full max-w-lg rounded-[1.5rem] bg-white p-4 shadow-2xl">
+        <header className="flex items-start justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">SK MailPilot</p><h2 className="text-lg font-black leading-tight text-slate-950">Change email sync limit</h2><p className="mt-0.5 text-[11px] font-semibold leading-4 text-slate-500">Set how many inbox and Sent-mail messages every user may sync in one request.</p></div><button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100" aria-label="Close sync limit"><X size={17} /></button></header>
+        <label className="mt-4 block"><span className="mb-1 block text-xs font-black text-slate-700">Emails allowed per sync</span><input autoFocus type="number" min={1} max={100} step={1} value={limit} onChange={(event) => setLimit(Math.min(100, Math.max(1, Number(event.target.value) || 1)))} className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-bold" /></label>
         {message ? <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{message}</p> : null}
-        <button type="button" onClick={() => void save()} disabled={saving} className="mt-5 h-11 w-full rounded-xl bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save limit'}</button>
+        <button type="button" onClick={() => void save()} disabled={saving} className="mt-4 h-10 w-full rounded-xl bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save limit'}</button>
       </section>
     </div> : null}
   </>;
