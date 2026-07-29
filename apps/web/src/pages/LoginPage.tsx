@@ -231,7 +231,7 @@ export default function LoginPage() {
       <div className="mx-auto grid w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.9fr_1fr]">
         <section data-auth-panel className="relative hidden overflow-hidden rounded-[2rem] bg-slate-950 p-7 text-white shadow-[0_30px_120px_rgba(15,23,42,0.32)] lg:block">
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-slate-950">
-            <Sparkles size={14} /> SK Auth
+            <img src="/sk-logo.png" alt="" className="h-4 w-4 rounded-full object-cover" /> SK Auth
           </span>
           <h1 className="mt-8 max-w-lg text-5xl font-black leading-[0.98] tracking-tight sm:text-6xl">One login for every SK app.</h1>
           <p className="mt-5 max-w-xl text-sm font-semibold leading-7 text-slate-300">

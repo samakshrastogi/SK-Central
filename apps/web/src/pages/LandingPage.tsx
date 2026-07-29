@@ -51,7 +51,7 @@ export default function LandingPage() {
         <div className="relative">
           <div data-hero className="min-w-0">
             <span className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white">
-              <Sparkles size={14} /> SK Central
+              <img src="/sk-logo.png" alt="" className="h-4 w-4 rounded-full object-cover" /> SK Central
             </span>
             <h1 className="mt-2 max-w-4xl text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
               Your SK workspace, unified.

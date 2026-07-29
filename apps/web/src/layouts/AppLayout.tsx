@@ -111,7 +111,7 @@ export function AppLayout() {
       <header className="sticky top-0 z-40 border-b border-slate-900/10 bg-white/72 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-3 px-3 sm:px-5">
           <NavLink to="/" className="flex min-w-fit items-center gap-2" aria-label="SK Central overview">
-            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-slate-950 text-sm font-black text-white shadow-sm">SK</span>
+            <img src="/sk-logo.png" alt="" className="h-9 w-9 rounded-full object-cover shadow-sm" />
             <span className="hidden text-base font-black tracking-tight sm:inline">SK Central</span>
           </NavLink>
           <button
